@@ -1,7 +1,16 @@
-  <?php
+<?php
 require_once '../config/db.php';
 require_once '../includes/auth.php';
 checkTeacher();
+
+// --- [FIX ERROR] แก้ปัญหา MAX_JOIN_SIZE บน Hosting ---
+// สั่งให้ Server อนุญาตการ Query ที่มีการ Join ตารางเยอะๆ ได้
+try {
+    $pdo->exec("SET SQL_BIG_SELECTS=1");
+} catch (Exception $e) {
+    // เผื่อกรณีคำสั่งนี้ถูกบล็อก (แต่ส่วนใหญ่จะใช้ได้)
+}
+// -----------------------------------------------------
 
 // ดึงรายชื่อกลุ่มเรียนทั้งหมด
 $class_groups = $pdo->query("SELECT * FROM class_groups ORDER BY cla_name ASC")->fetchAll();

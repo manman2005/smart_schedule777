@@ -19,20 +19,13 @@ if (isset($_GET['filter_cur'])) {
     $_SESSION['plan_filters'] = ['cur' => $filter_cur, 'sug' => $filter_sug, 'com' => $filter_com];
 }
 
-// Data Fetching
+// Fetch Plan Data
 $plan = $pdo->prepare("SELECT * FROM study_plans WHERE pla_id = ?"); $plan->execute([$pla_id]); $plan_data = $plan->fetch();
 
-// --- [เพิ่มใหม่] หาว่าแผนการเรียนนี้ เป็นของสาขาวิชาอะไร (maj_id) ---
-$stmt_maj = $pdo->prepare("
-    SELECT m.maj_id 
-    FROM study_plans p 
-    JOIN class_groups c ON p.cla_id = c.cla_id 
-    JOIN majors m ON c.cla_major_code = m.maj_code 
-    WHERE p.pla_id = ?
-");
+// Maj_id Logic
+$stmt_maj = $pdo->prepare("SELECT m.maj_id FROM study_plans p JOIN class_groups c ON p.cla_id = c.cla_id JOIN majors m ON c.cla_major_code = m.maj_code WHERE p.pla_id = ?");
 $stmt_maj->execute([$pla_id]);
 $target_maj_id = $stmt_maj->fetchColumn(); 
-// ----------------------------------------------------------------
 
 $curriculums = $pdo->query("SELECT c.*, l.lev_name FROM curriculums c JOIN levels l ON c.lev_id = l.lev_id ORDER BY l.lev_id ASC, c.cur_year DESC")->fetchAll();
 $groups = $pdo->query("SELECT * FROM subject_groups ORDER BY FIELD(sug_name, 'หมวดวิชาสมรรถนะแกนกลาง', 'หมวดวิชาสมรรถนะวิชาชีพ', 'หมวดวิชาเลือกเสรี', 'กิจกรรมเสริมหลักสูตร') ASC")->fetchAll();
@@ -43,83 +36,59 @@ if (!empty($filter_cur) && !empty($filter_sug) && $filter_sug != 6 && $filter_su
     $stmt_com = $pdo->prepare($sql_com); $stmt_com->execute([$filter_cur, $filter_sug]); $competencies_list = $stmt_com->fetchAll(PDO::FETCH_COLUMN);
 }
 
+// Fetch Subjects for Add List
 $subjects = [];
 if (!empty($filter_cur) && !empty($filter_sug)) {
-    // เตรียม Query พื้นฐาน
     if ($filter_sug == 6) { 
-        $sql_sub = "SELECT * FROM subjects WHERE cur_id = ?"; 
-        $params_sub = [$filter_cur]; 
+        $sql_sub = "SELECT * FROM subjects WHERE cur_id = ?"; $params_sub = [$filter_cur]; 
     } else { 
-        $sql_sub = "SELECT * FROM subjects WHERE cur_id = ? AND sug_id = ?"; 
-        $params_sub = [$filter_cur, $filter_sug]; 
+        $sql_sub = "SELECT * FROM subjects WHERE cur_id = ? AND sug_id = ?"; $params_sub = [$filter_cur, $filter_sug]; 
     }
-
-    // กรองสมรรถนะ (ถ้ามี)
-    if ($filter_sug != 6 && $filter_sug != 5 && !empty($filter_com)) { 
-        $sql_sub .= " AND sub_competency = ?"; 
-        $params_sub[] = $filter_com; 
-    }
-
-    // --- [เพิ่มใหม่] กรองเฉพาะวิชาของสาขานั้น หรือ วิชาที่ไม่สังกัดสาขา ---
-    // เงื่อนไข: (maj_id เป็นค่าว่าง/NULL) หรือ (maj_id ตรงกับสาขาของแผนนี้)
-    if ($target_maj_id) {
-        $sql_sub .= " AND (maj_id IS NULL OR maj_id = '' OR maj_id = ?)";
-        $params_sub[] = $target_maj_id;
-    } else {
-        // กรณีหา maj_id ของแผนไม่เจอ (เช่น ข้อมูลไม่ครบ) ให้แสดงเฉพาะวิชาส่วนกลาง
-        $sql_sub .= " AND (maj_id IS NULL OR maj_id = '')";
-    }
-    // ----------------------------------------------------------------
+    if ($filter_sug != 6 && $filter_sug != 5 && !empty($filter_com)) { $sql_sub .= " AND sub_competency = ?"; $params_sub[] = $filter_com; }
+    
+    if ($target_maj_id) { $sql_sub .= " AND (maj_id IS NULL OR maj_id = '' OR maj_id = ?)"; $params_sub[] = $target_maj_id; } 
+    else { $sql_sub .= " AND (maj_id IS NULL OR maj_id = '')"; }
 
     $sql_sub .= " ORDER BY sub_code ASC";
-    $stmt_sub = $pdo->prepare($sql_sub); 
-    $stmt_sub->execute($params_sub); 
-    $subjects = $stmt_sub->fetchAll();
+    $stmt_sub = $pdo->prepare($sql_sub); $stmt_sub->execute($params_sub); $subjects = $stmt_sub->fetchAll();
 }
 
-$teachers = $pdo->query("SELECT * FROM teachers ORDER BY tea_fullname ASC")->fetchAll();
+// Fetch Teachers (ดึง sug_id มาด้วยเพื่อใช้กรอง)
+$teachers = $pdo->query("SELECT tea_id, tea_fullname, sug_id FROM teachers ORDER BY tea_fullname ASC")->fetchAll();
 
-// Existing Subjects in Plan (เหมือนเดิม)
+// Existing Plan Subjects
 $sql = "SELECT ps.*, s.sub_code, s.sub_name, s.sub_credit, s.sub_hours, s.sub_th_pr_ot, s.sub_competency, s.sug_id, sg.sug_name, t.tea_fullname 
-        FROM plan_subjects ps 
-        JOIN subjects s ON ps.sub_id = s.sub_id 
-        LEFT JOIN subject_groups sg ON s.sug_id = sg.sug_id 
-        LEFT JOIN teachers t ON ps.tea_id = t.tea_id 
-        WHERE ps.pla_id = ? 
-        ORDER BY s.sub_code ASC"; 
+        FROM plan_subjects ps JOIN subjects s ON ps.sub_id = s.sub_id LEFT JOIN subject_groups sg ON s.sug_id = sg.sug_id LEFT JOIN teachers t ON ps.tea_id = t.tea_id 
+        WHERE ps.pla_id = ? ORDER BY s.sub_code ASC"; 
 $stmt = $pdo->prepare($sql); $stmt->execute([$pla_id]); $plan_subjects = $stmt->fetchAll();
 $existing_sub_ids = array_column($plan_subjects, 'sub_id');
 
-// คำนวณยอดรวม (เหมือนเดิม)
-$grand_total_subjects = count($plan_subjects); 
-$grand_total_credits = 0; 
-$grand_total_hours = 0;
-$grouped_subjects = [];
-
+// Grouping Logic
+$grand_total_subjects = count($plan_subjects); $grand_total_credits = 0; $grand_total_hours = 0; $grouped_subjects = [];
 foreach ($plan_subjects as $ps) {
     $current_sug_id = $ps['sug_id']; $current_sug_name = $ps['sug_name'];
     if ($ps['pls_note'] === 'free_elective') { $current_sug_id = 6; $current_sug_name = 'หมวดวิชาเลือกเสรี'; }
     if (empty($current_sug_id)) { $current_sug_id = 999; $current_sug_name = 'ไม่ระบุหมวดวิชา'; }
-    
-    if (!isset($grouped_subjects[$current_sug_id])) { 
-        $grouped_subjects[$current_sug_id] = ['name' => $current_sug_name, 'items' => [], 'credits' => 0, 'hours' => 0]; 
-    }
-    
+    if (!isset($grouped_subjects[$current_sug_id])) { $grouped_subjects[$current_sug_id] = ['name' => $current_sug_name, 'items' => [], 'credits' => 0, 'hours' => 0]; }
     $grouped_subjects[$current_sug_id]['items'][] = $ps;
     $grouped_subjects[$current_sug_id]['credits'] += intval($ps['sub_credit']);
     $grouped_subjects[$current_sug_id]['hours'] += intval($ps['sub_hours']); 
-    
-    $grand_total_credits += intval($ps['sub_credit']);
-    $grand_total_hours += intval($ps['sub_hours']);
+    $grand_total_credits += intval($ps['sub_credit']); $grand_total_hours += intval($ps['sub_hours']);
 }
 ksort($grouped_subjects);
-
 $group_colors = [ 1=>['bg'=>'bg-orange-50','border'=>'border-orange-400'], 2=>['bg'=>'bg-blue-50','border'=>'border-blue-400'], 5=>['bg'=>'bg-pink-50','border'=>'border-pink-400'], 6=>['bg'=>'bg-teal-50','border'=>'border-teal-400'], 999=>['bg'=>'bg-slate-50','border'=>'border-slate-400'] ];
 
 require_once '../includes/header.php';
 ?>
 
-<div class="max-w-7xl mx-auto space-y-6 pb-12">
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<style>
+    .fade-out { opacity: 0; transform: translateX(20px); transition: all 0.3s ease-out; }
+    .modal { transition: opacity 0.25s ease; }
+    body.modal-active { overflow-x: hidden; overflow-y: hidden !important; }
+</style>
+
+<div class="max-w-7xl mx-auto space-y-6 pb-12 relative">
     
     <div class="flex flex-col md:flex-row justify-between items-start gap-4">
         <div>
@@ -127,26 +96,25 @@ require_once '../includes/header.php';
             <h1 class="text-3xl font-serif font-bold text-slate-800">จัดการรายวิชาในแผน</h1>
             <p class="text-slate-500 font-medium"><?php echo htmlspecialchars($plan_data['pla_name']); ?></p>
         </div>
-        
-        <div class="flex flex-wrap gap-3">
+        <div class="flex flex-wrap gap-3" id="stats-container">
             <div class="bg-white border border-slate-200 px-5 py-3 rounded-xl shadow-sm text-center min-w-[100px] flex-1 md:flex-none">
                 <div class="text-[10px] text-slate-400 uppercase font-bold tracking-wider">จำนวนวิชา</div>
-                <div class="text-3xl font-black text-emerald-500"><?php echo $grand_total_subjects; ?></div>
+                <div class="text-3xl font-black text-emerald-500" id="total-subjects"><?php echo $grand_total_subjects; ?></div>
             </div>
             <div class="bg-white border border-slate-200 px-5 py-3 rounded-xl shadow-sm text-center min-w-[100px] flex-1 md:flex-none">
                 <div class="text-[10px] text-slate-400 uppercase font-bold tracking-wider">หน่วยกิตรวม</div>
-                <div class="text-3xl font-black text-cvc-blue"><?php echo $grand_total_credits; ?></div>
+                <div class="text-3xl font-black text-cvc-blue" id="total-credits"><?php echo $grand_total_credits; ?></div>
             </div>
             <div class="bg-white border border-slate-200 px-5 py-3 rounded-xl shadow-sm text-center min-w-[100px] flex-1 md:flex-none">
                 <div class="text-[10px] text-slate-400 uppercase font-bold tracking-wider">ชั่วโมงรวม</div>
-                <div class="text-3xl font-black text-amber-500"><?php echo $grand_total_hours; ?></div>
+                <div class="text-3xl font-black text-amber-500" id="total-hours"><?php echo $grand_total_hours; ?></div>
             </div>
         </div>
     </div>
 
     <div class="card-premium p-0 overflow-hidden border border-slate-200">
         <div class="bg-slate-50 px-6 py-4 border-b border-slate-200 flex justify-between items-center">
-            <h3 class="font-bold text-slate-700 flex items-center gap-2"><i class="fa-solid fa-circle-plus text-green-500"></i> เพิ่มรายวิชา (Multi-Select)</h3>
+            <h3 class="font-bold text-slate-700 flex items-center gap-2"><i class="fa-solid fa-circle-plus text-green-500"></i> เพิ่มรายวิชา</h3>
             <?php if($filter_cur || $filter_sug): ?>
                 <a href="?pla_id=<?php echo $pla_id; ?>&action=reset" class="text-xs text-red-500 hover:underline"><i class="fa-solid fa-rotate-left"></i> รีเซ็ตตัวกรอง</a>
             <?php endif; ?>
@@ -160,7 +128,7 @@ require_once '../includes/header.php';
             </form>
 
             <?php if (!empty($filter_cur) && !empty($filter_sug)): ?>
-            <form action="save_plan_subject.php" method="POST">
+            <form id="addSubjectsForm">
                 <input type="hidden" name="pla_id" value="<?php echo $pla_id; ?>">
                 <input type="hidden" name="filter_sug_context" value="<?php echo $filter_sug; ?>">
 
@@ -168,22 +136,22 @@ require_once '../includes/header.php';
                     <?php if (empty($subjects)): ?>
                         <div class="absolute inset-0 flex flex-col items-center justify-center text-slate-400">
                             <i class="fa-regular fa-folder-open text-4xl mb-2"></i>
-                            <p>ไม่พบรายวิชาตามเงื่อนไขที่เลือก (หรือกรองตามสาขาแล้วไม่พบ)</p>
+                            <p>ไม่พบรายวิชาตามเงื่อนไข</p>
                         </div>
                     <?php else: ?>
                         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
                             <?php $vis = 0; foreach ($subjects as $s): if (in_array($s['sub_id'], $existing_sub_ids)) continue; $vis++; ?>
-                                <label class="cursor-pointer group block relative">
-                                    <input type="checkbox" name="sub_ids[]" value="<?php echo $s['sub_id']; ?>" class="peer sr-only sub-checkbox" onchange="filterTeachers()">
-                                    <div class="p-3 bg-white border border-slate-200 rounded-lg peer-checked:border-cvc-blue peer-checked:bg-blue-50 peer-checked:ring-1 peer-checked:ring-cvc-blue hover:shadow-md transition">
+                                <div class="bg-white border border-slate-200 rounded-lg hover:shadow-md transition relative group-card" id="card_<?php echo $s['sub_id']; ?>">
+                                    <label class="cursor-pointer block p-3 pb-2">
+                                        <input type="checkbox" name="sub_ids[]" value="<?php echo $s['sub_id']; ?>" class="peer sr-only sub-checkbox" onchange="toggleTeacherSelect(this, '<?php echo $s['sub_id']; ?>')">
                                         <div class="flex justify-between items-start mb-1">
                                             <span class="font-mono font-bold text-xs text-cvc-blue bg-blue-100 px-1.5 rounded"><?php echo $s['sub_code']; ?></span>
                                             <span class="text-[10px] font-bold text-slate-500 bg-slate-100 px-1.5 rounded"><?php echo $s['sub_th_pr_ot']; ?></span>
                                         </div>
-                                        <div class="text-sm font-bold text-slate-700 leading-tight mb-1 group-hover:text-blue-700"><?php echo $s['sub_name']; ?></div>
+                                        <div class="text-sm font-bold text-slate-700 leading-tight group-hover:text-blue-700"><?php echo $s['sub_name']; ?></div>
                                         <div class="absolute top-2 right-2 text-cvc-blue opacity-0 peer-checked:opacity-100 transition"><i class="fa-solid fa-check-circle"></i></div>
-                                    </div>
-                                </label>
+                                    </label>
+                                </div>
                             <?php endforeach; if ($vis == 0): ?><div class="absolute inset-0 flex items-center justify-center text-green-600 font-bold"><i class="fa-solid fa-check mr-2"></i> เลือกครบทุกวิชาแล้ว</div><?php endif; ?>
                         </div>
                     <?php endif; ?>
@@ -191,44 +159,37 @@ require_once '../includes/header.php';
 
                 <div class="flex gap-4 items-center bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
                     <div class="flex-1">
-                        <label class="block text-xs font-bold text-slate-500 uppercase mb-1">ครูผู้สอน (Optional)</label>
-                        <select name="tea_id" id="tea_select" class="w-full text-sm"><option value="">-- ปล่อยว่าง (ยังไม่ระบุ) --</option><?php foreach ($teachers as $t): ?><option value="<?php echo $t['tea_id']; ?>" data-sug-id="<?php echo $t['sug_id']; ?>"><?php echo $t['tea_fullname']; ?></option><?php endforeach; ?></select>
+                        <label class="block text-xs font-bold text-slate-500 uppercase mb-1">ตั้งค่าครูแบบกลุ่ม (Optional)</label>
+                        <select name="tea_id" id="tea_select" class="w-full text-sm text-slate-500">
+                            <option value="">-- ปล่อยว่าง (รอเลือกทีหลัง) --</option>
+                            <?php foreach ($teachers as $t): ?>
+                                <option value="<?php echo $t['tea_id']; ?>"><?php echo $t['tea_fullname']; ?> (ใช้กับทุกวิชาที่เลือกด้านบน)</option>
+                            <?php endforeach; ?>
+                        </select>
                     </div>
-                    <button type="submit" class="btn-cvc self-end h-10 shadow-lg"><i class="fa-solid fa-plus-circle mr-2"></i> บันทึกรายการ</button>
+                    <button type="button" onclick="submitAddSubjects()" class="btn-cvc self-end h-10 shadow-lg"><i class="fa-solid fa-plus-circle mr-2"></i> บันทึกรายการ</button>
                 </div>
             </form>
             <?php else: ?>
                 <div class="p-8 text-center bg-slate-50 rounded-xl border border-dashed border-slate-300 text-slate-400">
                     <i class="fa-solid fa-arrow-up text-3xl mb-2 animate-bounce"></i>
                     <p class="font-bold">กรุณาเลือก "หลักสูตร" และ "หมวดวิชา" ด้านบน</p>
-                    <p class="text-xs">เพื่อแสดงรายชื่อวิชาที่สามารถเพิ่มลงในแผนได้</p>
                 </div>
             <?php endif; ?>
         </div>
     </div>
 
     <?php if (count($grouped_subjects) > 0): ?>
-    <div class="space-y-4">
-        <?php foreach ($grouped_subjects as $gid => $group): 
-            $theme = $group_colors[$gid % 7] ?? $group_colors[999];
-        ?>
-            <div class="card-premium overflow-hidden border-0 shadow-sm">
+    <div class="space-y-4" id="plan-tables">
+        <?php foreach ($grouped_subjects as $gid => $group): $theme = $group_colors[$gid % 7] ?? $group_colors[999]; ?>
+            <div class="card-premium overflow-hidden border-0 shadow-sm group-section" data-group-id="<?php echo $gid; ?>">
                 <div class="px-6 py-4 border-b border-slate-200 flex justify-between items-center <?php echo $theme['bg']; ?> border-l-4 <?php echo $theme['border']; ?>">
                     <h3 class="font-bold text-slate-700"><?php echo htmlspecialchars($group['name']); ?></h3>
-                    
                     <div class="flex gap-2">
-                        <span class="text-xs font-bold bg-white px-3 py-1 rounded-full border shadow-sm text-emerald-600">
-                            <?php echo count($group['items']); ?> วิชา
-                        </span>
-                        <span class="text-xs font-bold bg-white px-3 py-1 rounded-full border shadow-sm text-slate-600">
-                            <?php echo $group['credits']; ?> นก.
-                        </span>
-                        <span class="text-xs font-bold bg-white px-3 py-1 rounded-full border shadow-sm text-amber-600">
-                            <?php echo $group['hours']; ?> ชม.
-                        </span>
+                        <span class="text-xs font-bold bg-white px-3 py-1 rounded-full border shadow-sm text-emerald-600 count-badge"><?php echo count($group['items']); ?> วิชา</span>
+                        <span class="text-xs font-bold bg-white px-3 py-1 rounded-full border shadow-sm text-slate-600 credit-badge"><?php echo $group['credits']; ?> นก.</span>
                     </div>
                 </div>
-                
                 <table class="w-full text-left">
                     <thead class="bg-slate-50 border-b border-slate-100 text-xs text-slate-500 uppercase font-extrabold tracking-wide">
                         <tr>
@@ -242,72 +203,27 @@ require_once '../includes/header.php';
                     </thead>
                     <tbody class="divide-y divide-slate-100 bg-white">
                         <?php foreach ($group['items'] as $ps): ?>
-                        <tr class="hover:bg-blue-50/20 transition group">
+                        <tr class="hover:bg-blue-50/20 transition group" id="row_<?php echo $ps['pls_id']; ?>" data-credit="<?php echo $ps['sub_credit']; ?>" data-hours="<?php echo $ps['sub_hours']; ?>">
+                            <td class="px-6 py-3 align-middle text-center"><span class="font-mono font-bold text-cvc-blue bg-blue-50 px-2 py-1 rounded border border-blue-100 shadow-sm text-sm"><?php echo $ps['sub_code']; ?></span></td>
+                            <td class="px-6 py-3 align-middle"><div class="font-medium text-slate-700 text-sm"><?php echo $ps['sub_name']; ?></div></td>
+                            <td class="px-6 py-3 align-middle text-center"><span class="font-bold text-slate-600 bg-slate-50 px-2.5 py-1 rounded-full border border-slate-200 text-xs"><?php echo $ps['sub_credit']; ?></span></td>
+                            <td class="px-6 py-3 align-middle text-center"><span class="font-bold text-amber-600 bg-amber-50 px-2.5 py-1 rounded-full border border-amber-200 text-xs shadow-sm"><?php echo $ps['sub_hours']; ?></span></td>
                             
-                            <td class="px-6 py-3 align-middle text-center whitespace-nowrap">
-                                <span class="font-mono font-bold text-cvc-blue bg-blue-50 px-2 py-1 rounded border border-blue-100 shadow-sm text-sm">
-                                    <?php echo $ps['sub_code']; ?>
-                                </span>
-                            </td>
-
-                            <td class="px-6 py-3 align-middle">
-                                <div class="font-medium text-slate-700 text-sm">
-                                    <?php echo $ps['sub_name']; ?>
-                                </div>
-                                <?php if($ps['sub_competency']): ?>
-                                    <div class="text-[10px] text-slate-400 mt-0.5"><?php echo $ps['sub_competency']; ?></div>
-                                <?php endif; ?>
-                            </td>
-
-                            <td class="px-6 py-3 align-middle text-center">
-                                <span class="font-bold text-slate-600 bg-slate-50 px-2.5 py-1 rounded-full border border-slate-200 text-xs">
-                                    <?php echo $ps['sub_credit']; ?>
-                                </span>
-                            </td>
-                            
-                            <td class="px-6 py-3 align-middle text-center">
-                                <div class="flex flex-col items-center">
-                                    <span class="font-bold text-amber-600 bg-amber-50 px-2.5 py-1 rounded-full border border-amber-200 text-xs shadow-sm">
-                                        <?php echo $ps['sub_hours']; ?>
-                                    </span>
-                                    <span class="text-[10px] text-slate-400 font-mono mt-1">
-                                        (<?php echo $ps['sub_th_pr_ot']; ?>)
-                                    </span>
-                                </div>
-                            </td>
-                            
-                            <td class="px-6 py-3 align-middle">
+                            <td class="px-6 py-3 align-middle" id="teacher_cell_<?php echo $ps['pls_id']; ?>">
                                 <?php if($ps['tea_fullname']): ?>
-                                    <div class="flex items-center">
-                                        <span class="bg-emerald-50 text-emerald-700 px-3 py-1.5 rounded-lg text-xs font-bold border border-emerald-100 flex items-center gap-2 shadow-sm">
-                                            <i class="fa-solid fa-user-check"></i> <?php echo $ps['tea_fullname']; ?>
-                                        </span>
-                                    </div>
+                                    <span class="bg-emerald-50 text-emerald-700 px-3 py-1.5 rounded-lg text-xs font-bold border border-emerald-100 flex items-center gap-2 shadow-sm w-fit"><i class="fa-solid fa-user-check"></i> <?php echo $ps['tea_fullname']; ?></span>
                                 <?php else: ?>
-                                    <div class="flex items-center">
-                                        <span class="bg-orange-50 text-orange-700 px-3 py-1.5 rounded-lg text-xs font-bold border border-orange-100 flex items-center gap-2 shadow-sm animate-pulse">
-                                            <i class="fa-regular fa-clock"></i> รอการเลือกครูผู้สอน
-                                        </span>
-                                    </div>
+                                    <span class="bg-orange-50 text-orange-700 px-3 py-1.5 rounded-lg text-xs font-bold border border-orange-100 flex items-center gap-2 shadow-sm animate-pulse w-fit"><i class="fa-regular fa-clock"></i> รอการเลือกครูผู้สอน</span>
                                 <?php endif; ?>
                             </td>
 
                             <td class="px-6 py-3 align-middle text-center">
                                 <div class="flex justify-center items-center gap-2">
-                                    <a href="edit_plan_teacher.php?id=<?php echo $ps['pls_id']; ?>&pla_id=<?php echo $pla_id; ?>" 
-                                       class="w-9 h-9 rounded-lg border border-amber-200 text-amber-500 hover:bg-amber-500 hover:text-white flex items-center justify-center transition shadow-sm group/btn" 
-                                       title="แก้ไขครู">
-                                        <i class="fa-solid fa-pen-to-square text-xs group-hover/btn:scale-110 transition-transform"></i>
-                                    </a>
-                                    <a href="delete_plan_subject.php?id=<?php echo $ps['pls_id']; ?>&pla_id=<?php echo $pla_id; ?>" 
-                                       class="w-9 h-9 rounded-lg border border-red-200 text-red-500 hover:bg-red-500 hover:text-white flex items-center justify-center transition shadow-sm group/btn" 
-                                       onclick="return confirm('ยืนยันลบรายวิชานี้ออกจากแผน?');" 
-                                       title="ลบวิชา">
-                                        <i class="fa-solid fa-trash-can text-xs group-hover/btn:scale-110 transition-transform"></i>
-                                    </a>
+                                    <button onclick="openEditTeacher(<?php echo $ps['pls_id']; ?>, '<?php echo $ps['tea_id']; ?>', '<?php echo addslashes($ps['sub_name']); ?>', '<?php echo $ps['sug_id']; ?>')" class="w-9 h-9 rounded-lg border border-amber-200 text-amber-500 hover:bg-amber-500 hover:text-white flex items-center justify-center transition shadow-sm"><i class="fa-solid fa-pen-to-square text-xs"></i></button>
+                                    
+                                    <button onclick="deleteSubject(<?php echo $ps['pls_id']; ?>, <?php echo $pla_id; ?>, this)" class="w-9 h-9 rounded-lg border border-red-200 text-red-500 hover:bg-red-500 hover:text-white flex items-center justify-center transition shadow-sm"><i class="fa-solid fa-trash-can text-xs"></i></button>
                                 </div>
                             </td>
-
                         </tr>
                         <?php endforeach; ?>
                     </tbody>
@@ -318,19 +234,213 @@ require_once '../includes/header.php';
     <?php endif; ?>
 </div>
 
+<div id="teacherModal" class="fixed inset-0 z-50 hidden overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+    <div class="flex items-end justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
+        <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" aria-hidden="true" onclick="closeEditTeacher()"></div>
+        <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
+        
+        <div class="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg w-full">
+            <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+                <div class="sm:flex sm:items-start">
+                    <div class="mx-auto flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full bg-blue-100 sm:mx-0 sm:h-10 sm:w-10">
+                        <i class="fa-solid fa-user-pen text-cvc-blue"></i>
+                    </div>
+                    <div class="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left w-full">
+                        <h3 class="text-lg leading-6 font-medium text-gray-900" id="modal-title">เปลี่ยนครูผู้สอน</h3>
+                        <div class="mt-2">
+                            <p class="text-sm text-gray-500 mb-4" id="modalSubName">วิชา...</p>
+                            
+                            <form id="modalForm">
+                                <input type="hidden" id="modal_pls_id" name="pls_id">
+                                <label class="block text-sm font-bold text-slate-700 mb-2">เลือกครูผู้สอน (เฉพาะหมวดนี้)</label>
+                                <select id="modal_tea_id" name="tea_id" class="w-full text-sm border border-slate-300 rounded-lg py-2 px-3 focus:ring-cvc-blue focus:border-cvc-blue">
+                                    <option value="">-- ปล่อยว่าง (รอเลือกครู) --</option>
+                                    </select>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse gap-2">
+                <button type="button" onclick="saveTeacherChange()" class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-cvc-blue text-base font-medium text-white hover:bg-blue-800 focus:outline-none sm:ml-3 sm:w-auto sm:text-sm">บันทึก</button>
+                <button type="button" onclick="closeEditTeacher()" class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm">ยกเลิก</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script>
-function filterTeachers() {
-    const checkedBoxes = document.querySelectorAll('.sub-checkbox:checked');
-    const teacherSelect = document.getElementById('tea_select');
-    const options = teacherSelect.getElementsByTagName('option');
-    const allowedSugIds = new Set();
-    checkedBoxes.forEach(box => { const sugId = box.getAttribute('data-sug-id'); if(sugId) allowedSugIds.add(sugId); });
-    for (let i = 1; i < options.length; i++) { 
-        const opt = options[i]; const teacherSugId = opt.getAttribute('data-sug-id');
-        if (allowedSugIds.size === 0 || allowedSugIds.has(teacherSugId)) { opt.hidden = false; opt.disabled = false; } else { opt.hidden = true; opt.disabled = true; }
+// รับข้อมูลครูทั้งหมดจาก PHP มาเป็น JSON
+const allTeachers = <?php echo json_encode($teachers); ?>;
+
+function toggleTeacherSelect(checkbox, subId) {
+    const card = document.getElementById('card_' + subId);
+    if (checkbox.checked) {
+        card.classList.add('ring-2', 'ring-cvc-blue', 'bg-blue-50');
+    } else {
+        card.classList.remove('ring-2', 'ring-cvc-blue', 'bg-blue-50');
     }
-    if (teacherSelect.options[teacherSelect.selectedIndex].hidden) teacherSelect.value = "";
 }
+
+// === Function เปิด Modal และกรองครู ===
+function openEditTeacher(pls_id, current_tea_id, sub_name, target_sug_id) {
+    document.getElementById('modalSubName').innerText = sub_name;
+    document.getElementById('modal_pls_id').value = pls_id;
+    
+    // 1. เข้าถึง Select Element
+    const select = document.getElementById('modal_tea_id');
+    select.innerHTML = '<option value="">-- ปล่อยว่าง (รอเลือกครู) --</option>'; // ล้างค่าเก่า
+    
+    // 2. วนลูปสร้าง Option ใหม่ โดยกรองเฉพาะ sug_id ที่ตรงกัน
+    allTeachers.forEach(tea => {
+        // เงื่อนไข: ถ้า sug_id ตรงกัน หรือ หมวดเป้าหมายเป็น null (เผื่อไว้) ให้แสดง
+        if (target_sug_id && tea.sug_id == target_sug_id) {
+            const option = document.createElement('option');
+            option.value = tea.tea_id;
+            option.text = tea.tea_fullname;
+            select.appendChild(option);
+        } else if (!target_sug_id) {
+            // ถ้าวิชาไม่มีหมวด (เช่น เลือกเสรีบางกรณี) ให้แสดงทั้งหมด (หรือจะปรับให้ไม่แสดงก็ได้ตามต้องการ)
+            const option = document.createElement('option');
+            option.value = tea.tea_id;
+            option.text = tea.tea_fullname;
+            select.appendChild(option);
+        }
+    });
+
+    // 3. เลือกค่าเดิม (ถ้ามี)
+    if (current_tea_id) {
+        select.value = current_tea_id;
+        // กรณีครูคนเดิม ย้ายหมวดไปแล้ว แต่ยังสอนวิชานี้อยู่ -> ต้องบังคับเพิ่ม Option ให้เขาด้วย เพื่อไม่ให้ค่าหาย
+        if (select.value === "") { 
+            const originalTea = allTeachers.find(t => t.tea_id == current_tea_id);
+            if (originalTea) {
+                const option = document.createElement('option');
+                option.value = originalTea.tea_id;
+                option.text = originalTea.tea_fullname + " (ต่างหมวด)";
+                option.selected = true;
+                select.appendChild(option);
+            }
+        }
+    } else {
+        select.value = "";
+    }
+
+    document.getElementById('teacherModal').classList.remove('hidden');
+    document.body.classList.add('modal-active');
+}
+
+function closeEditTeacher() {
+    document.getElementById('teacherModal').classList.add('hidden');
+    document.body.classList.remove('modal-active');
+}
+
+async function saveTeacherChange() {
+    const pls_id = document.getElementById('modal_pls_id').value;
+    const tea_id = document.getElementById('modal_tea_id').value;
+    
+    const select = document.getElementById('modal_tea_id');
+    const tea_name = select.selectedIndex >= 0 ? select.options[select.selectedIndex].text : '';
+    const is_empty = (tea_id === "");
+
+    const btn = document.querySelector('#teacherModal button[onclick="saveTeacherChange()"]');
+    const originalText = btn.innerText;
+    btn.innerText = 'กำลังบันทึก...';
+    btn.disabled = true;
+
+    try {
+        const formData = new FormData();
+        formData.append('pls_id', pls_id);
+        formData.append('tea_id', tea_id);
+
+        const response = await fetch('edit_plan_teacher.php', {
+            method: 'POST',
+            body: formData
+        });
+        const data = await response.json();
+
+        if (data.status === 'success') {
+            const cell = document.getElementById('teacher_cell_' + pls_id);
+            if (is_empty) {
+                cell.innerHTML = '<span class="bg-orange-50 text-orange-700 px-3 py-1.5 rounded-lg text-xs font-bold border border-orange-100 flex items-center gap-2 shadow-sm animate-pulse w-fit"><i class="fa-regular fa-clock"></i> รอการเลือกครูผู้สอน</span>';
+            } else {
+                // ตัดคำว่า (ต่างหมวด) ออกถ้ามี เพื่อความสวยงาม
+                const cleanName = tea_name.replace(' (ต่างหมวด)', '');
+                cell.innerHTML = `<span class="bg-emerald-50 text-emerald-700 px-3 py-1.5 rounded-lg text-xs font-bold border border-emerald-100 flex items-center gap-2 shadow-sm w-fit"><i class="fa-solid fa-user-check"></i> ${cleanName}</span>`;
+            }
+            closeEditTeacher();
+            const Toast = Swal.mixin({ toast: true, position: 'top-end', showConfirmButton: false, timer: 1500 });
+            Toast.fire({ icon: 'success', title: 'บันทึกเรียบร้อย' });
+        } else {
+            Swal.fire('Error', data.message, 'error');
+        }
+    } catch (error) {
+        console.error(error);
+        Swal.fire('Error', 'เกิดข้อผิดพลาด', 'error');
+    } finally {
+        btn.innerText = originalText;
+        btn.disabled = false;
+    }
+}
+
+async function deleteSubject(pls_id, pla_id, btn) {
+    const result = await Swal.fire({
+        title: 'ยืนยันการลบ?',
+        text: "คุณต้องการลบวิชานี้ออกจากแผนหรือไม่",
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#ef4444',
+        cancelButtonColor: '#cbd5e1',
+        confirmButtonText: 'ลบเลย',
+        cancelButtonText: 'ยกเลิก'
+    });
+
+    if (result.isConfirmed) {
+        try {
+            const response = await fetch(`delete_plan_subject.php?id=${pls_id}&pla_id=${pla_id}&ajax=1`);
+            const data = await response.json();
+            if (data.status === 'success') {
+                const row = btn.closest('tr');
+                row.style.transition = 'all 0.5s ease';
+                row.style.opacity = '0';
+                row.style.transform = 'translateX(50px)';
+                setTimeout(() => { row.remove(); updateTotals(); }, 500);
+            } else { Swal.fire('Error', data.message, 'error'); }
+        } catch (error) { Swal.fire('Error', 'Connect Error', 'error'); }
+    }
+}
+
+async function submitAddSubjects() {
+    const form = document.getElementById('addSubjectsForm');
+    const formData = new FormData(form);
+    let hasSubject = false;
+    for (var pair of formData.entries()) { if (pair[0] === 'sub_ids[]') hasSubject = true; }
+    
+    if (!hasSubject) { Swal.fire('แจ้งเตือน', 'กรุณาเลือกรายวิชา', 'warning'); return; }
+
+    Swal.fire({ title: 'กำลังบันทึก...', didOpen: () => { Swal.showLoading() } });
+    try {
+        const response = await fetch('save_plan_subject.php?ajax=1', { method: 'POST', body: formData });
+        const data = await response.json();
+        if (data.status === 'success') {
+            await Swal.fire({ icon: 'success', title: 'บันทึกสำเร็จ', timer: 1000, showConfirmButton: false });
+            window.location.reload();
+        } else { Swal.fire('Error', data.message || 'Error', 'error'); }
+    } catch (error) { Swal.fire('Error', 'Connect Error', 'error'); }
+}
+
+function updateTotals() {
+    let grandTotalSub = 0; let grandTotalCredit = 0; let grandTotalHour = 0;
+    document.querySelectorAll('tbody tr.group').forEach(row => {
+        grandTotalSub++;
+        grandTotalCredit += parseInt(row.getAttribute('data-credit') || 0);
+        grandTotalHour += parseInt(row.getAttribute('data-hours') || 0);
+    });
+    document.getElementById("total-subjects").innerText = grandTotalSub;
+    document.getElementById("total-credits").innerText = grandTotalCredit;
+    document.getElementById("total-hours").innerText = grandTotalHour;
+}
+
 document.addEventListener("DOMContentLoaded", function() {
     const key = 'plan_scroll_<?php echo $pla_id; ?>';
     const pos = sessionStorage.getItem(key);
@@ -338,4 +448,5 @@ document.addEventListener("DOMContentLoaded", function() {
 });
 window.addEventListener("beforeunload", function() { sessionStorage.setItem('plan_scroll_<?php echo $pla_id; ?>', window.scrollY); });
 </script>
+
 <?php require_once '../includes/footer.php'; ?>
