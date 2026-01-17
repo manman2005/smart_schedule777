@@ -1,7 +1,7 @@
 <?php 
 session_start();
 if (isset($_SESSION['user_id'])) {
-    if ($_SESSION['role'] == 'admin') header("Location: admin/dashboard.php");
+    if ($_SESSION['role'] == 'admin') header("Location: admin/index.php");
     elseif ($_SESSION['role'] == 'teacher') header("Location: teacher/index.php");
     elseif ($_SESSION['role'] == 'student') header("Location: student/index.php");
     exit();
@@ -46,7 +46,7 @@ if (isset($_SESSION['user_id'])) {
                 
                 <h2 class="text-4xl font-serif font-bold leading-tight mb-4">Chiang Rai<br>Vocational College</h2>
                 <p class="text-blue-200 font-light text-sm leading-relaxed">
-                    ระบบบริหารจัดการตารางเรียนและงานวิชาการออนไลน์ เพื่อความเป็นเลิศทางวิชาชีพ
+                    ระบบบริหารจัดการตารางเรียนตารางสอนและงานวิชาการออนไลน์ เพื่อความเป็นเลิศทางวิชาชีพ
                 </p>
             </div>
             

@@ -96,6 +96,20 @@ if (session_status() === PHP_SESSION_NONE) {
         th { background-color: #f8fafc; color: #64748b; font-weight: 700; text-transform: uppercase; font-size: 0.75rem; letter-spacing: 0.05em; border-bottom: 2px solid #e2e8f0; }
         td { border-bottom: 1px solid #f1f5f9; }
         tr:last-child td { border-bottom: none; }
+
+        /* --- CSS ที่เพิ่มใหม่สำหรับทำตารางเลื่อนได้บนมือถือ --- */
+        .table-responsive-scroll {
+            display: block;
+            width: 100%;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+            margin-bottom: 1rem;
+        }
+        /* บังคับตารางให้มีความกว้างขั้นต่ำ เพื่อไม่ให้บีบจนเละ */
+        .table-responsive-scroll table {
+            min-width: 900px; 
+            width: 100%;
+        }
     </style>
 </head>
 <body>
@@ -103,7 +117,7 @@ if (session_status() === PHP_SESSION_NONE) {
     <div class="fixed top-0 left-0 right-0 z-50 flex justify-center pt-5 px-4">
         <nav class="w-full max-w-[85rem] bg-gradient-to-r from-slate-900 via-blue-900 to-slate-900 backdrop-blur-xl rounded-full shadow-[0_8px_30px_rgb(15,23,42,0.4)] border border-slate-700/50 px-6 py-3 flex justify-between items-center transition-all hover:shadow-[0_15px_40px_rgb(15,23,42,0.5)]">
             
-            <a href="" class="flex items-center gap-4 pl-2 group">
+            <a href="index.php" class="flex items-center gap-4 pl-2 group">
                 <div class="relative z-10 group-hover:scale-110 transition duration-500">
                     <div class="bg-white/10 rounded-full p-2 backdrop-blur-sm"> <img src="/images/cvc_logo.png" alt="CVC Logo" class="w-16 h-16 object-contain filter drop-shadow-md">
                     </div>

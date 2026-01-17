@@ -9,7 +9,7 @@ require_once '../includes/header.php';
 
 <div class="max-w-7xl mx-auto pb-12">
     <div class="mb-8">
-        <a href="dashboard.php" class="inline-flex items-center text-slate-400 hover:text-cvc-blue transition text-xs font-bold uppercase tracking-wider mb-2"><i class="fa-solid fa-arrow-left mr-2"></i> Dashboard</a>
+        <a href="index.php" class="inline-flex items-center text-slate-400 hover:text-cvc-blue transition text-xs font-bold uppercase tracking-wider mb-2"><i class="fa-solid fa-arrow-left mr-2"></i> Dashboard</a>
         <div class="flex flex-col md:flex-row justify-between items-end gap-4">
             <div><h1 class="text-3xl font-serif font-bold text-slate-800">จัดการเวลาเรียน</h1><p class="text-slate-500 mt-1">Time Slots Management</p></div>
             <div class="flex gap-3">

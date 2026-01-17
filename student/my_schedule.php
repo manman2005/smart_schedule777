@@ -43,7 +43,7 @@ $room_no = intval($student['cla_group_no']);
 $cla_name_full = "{$student['maj_name']} {$student['cla_name']}.{$stu_level}/{$room_no}";
 $advisor_name = $student['advisor_name'] ?? "..................................................";
 
-// Period Selector Logic
+// --- Period Selector Logic (ปรับปรุงใหม่: กรองเทอมตามปี) ---
 $stmt_periods = $pdo->query("SELECT DISTINCT sch_academic_year, sch_semester FROM schedule ORDER BY sch_academic_year DESC, sch_semester ASC");
 $available_periods = $stmt_periods->fetchAll();
 
@@ -55,8 +55,27 @@ if(count($available_periods) > 0) {
     $default_semester = 1; 
 }
 
+// รับค่าปีที่เลือกมาก่อน
 $selected_year = $_GET['year'] ?? $default_year;
-$selected_semester = $_GET['semester'] ?? $default_semester;
+
+// หาว่าปีที่เลือก มีเทอมไหนบ้าง
+$valid_semesters_for_year = [];
+foreach($available_periods as $p) {
+    if($p['sch_academic_year'] == $selected_year) {
+        $valid_semesters_for_year[] = $p['sch_semester'];
+    }
+}
+sort($valid_semesters_for_year);
+if(empty($valid_semesters_for_year)) $valid_semesters_for_year = [1];
+
+// ตรวจสอบค่าเทอม ถ้าเทอมที่ส่งมาไม่มีในปีนั้น ให้ดีดไปเทอมแรกที่มี
+$req_semester = $_GET['semester'] ?? $default_semester;
+if(in_array($req_semester, $valid_semesters_for_year)) {
+    $selected_semester = $req_semester;
+} else {
+    $selected_semester = $valid_semesters_for_year[0];
+}
+// --------------------------------------------------------
 
 $time_slots = $pdo->query("SELECT * FROM time_slots ORDER BY tim_start ASC")->fetchAll();
 
@@ -117,6 +136,8 @@ foreach($raw_summary as $sub) {
         #schedule-area { position: absolute; left: 0; top: 0; width: 100%; border: none !important; box-shadow: none !important; padding: 0 !important; } 
         .no-print { display: none !important; } 
         * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+        .table-responsive-scroll { overflow-x: visible; }
+        .table-responsive-scroll table { min-width: 100%; }
     }
     
     #schedule-area {
@@ -154,6 +175,16 @@ foreach($raw_summary as $sub) {
     .text-code { font-size: 11px; font-weight: bold; display: block; }
     .text-room { font-size: 11px; display: block; }
     .text-teacher { font-size: 10px; display: block; }
+
+    /* Responsive Scroll */
+    .table-responsive-scroll {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        width: 100%;
+    }
+    .table-responsive-scroll table {
+        min-width: 900px;
+    }
 </style>
 
 <div class="max-w-7xl mx-auto space-y-6 pb-12">
@@ -192,9 +223,10 @@ foreach($raw_summary as $sub) {
                     <?php endforeach; ?>
                 </select>
                 <select name="semester" class="bg-slate-50 border border-slate-200 text-slate-600 text-sm rounded-lg focus:ring-cvc-blue outline-none" onchange="this.form.submit()">
-                    <?php for($s = 1; $s <= 3; $s++): ?>
+                    <?php 
+                    foreach($valid_semesters_for_year as $s): ?>
                         <option value="<?php echo $s; ?>" <?php echo $selected_semester == $s ? 'selected' : ''; ?>>เทอม <?php echo $s; ?></option>
-                    <?php endfor; ?>
+                    <?php endforeach; ?>
                 </select>
             </form>
             <div class="h-9 w-px bg-slate-200 mx-1 hidden md:block"></div>
@@ -205,9 +237,9 @@ foreach($raw_summary as $sub) {
 
     <div id="schedule-area" class="bg-white p-6 shadow-xl border border-slate-200 min-h-[600px]">
         
-        <div class="flex flex-row gap-4 mb-2 items-start">
+        <div class="flex flex-col md:flex-row gap-4 mb-2 items-start">
             
-            <div class="w-[45%] flex flex-col gap-2">
+            <div class="w-full md:w-[45%] flex flex-col gap-2">
                 <div class="flex items-center gap-3 border-b-2 border-black pb-2 mb-2">
                     <img src="/images/cvc_logo.png" class="w-16 h-16 object-contain">
                     <div>
@@ -236,7 +268,7 @@ foreach($raw_summary as $sub) {
                 </div>
             </div>
 
-            <div class="w-[55%]">
+            <div class="w-full md:w-[55%]">
                 <table class="summary-table">
                     <thead>
                         <tr>
@@ -283,7 +315,7 @@ foreach($raw_summary as $sub) {
             </div>
         </div>
 
-        <div class="w-full mt-4">
+        <div class="w-full mt-4 table-responsive-scroll">
             <table class="schedule-grid text-[10px] table-fixed w-full">
                 <thead>
                     <tr>
@@ -326,7 +358,12 @@ foreach($raw_summary as $sub) {
                                 // 3. ข้อมูลในตาราง (รหัสวิชา, รหัสห้อง, ครูผู้สอน)
                                 echo "<span class='text-code'>{$info['sub_code']}</span>"; 
                                 echo "<span class='text-room'>{$info['roo_id']}</span>"; 
-                                echo "<span class='text-teacher'>" . ($info['tea_fullname'] ?: 'รอครูสอน') . "</span>";
+                                
+                                // --- ส่วนตัดคำนำหน้าชื่อครู ---
+                                $tea_name = $info['tea_fullname'] ?: 'รอครูสอน';
+                                $tea_name = preg_replace('/^(นาย|นางสาว|นาง|ว่าที่ร้อยตรี|ว่าที่ร\.ต\.|ดร\.|ผศ\.|รศ\.|ศ\.|อ\.|อาจารย์)\s*/u', '', $tea_name);
+                                
+                                echo "<span class='text-teacher'>" . $tea_name . "</span>";
                                 
                                 echo "</div></td>";
                                 $skip_slots = $hours - 1;

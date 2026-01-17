@@ -25,7 +25,7 @@ if(empty($id) || empty($mode)) {
 }
 
 try {
-    // --- Period Selector Logic ---
+    // --- Period Selector Logic (ปรับปรุงใหม่: กรองเทอมตามปี) ---
     $stmt_periods = $pdo->query("SELECT DISTINCT sch_academic_year, sch_semester FROM schedule ORDER BY sch_academic_year DESC, sch_semester ASC");
     $available_periods = $stmt_periods->fetchAll();
 
@@ -37,8 +37,30 @@ try {
         $default_semester = 1;
     }
 
+    // รับค่าปีที่เลือกมาก่อน
     $selected_year = $_GET['year'] ?? $default_year;
-    $selected_semester = $_GET['semester'] ?? $default_semester;
+
+    // หาว่าปีที่เลือก มีเทอมไหนบ้างที่มีข้อมูลใน DB
+    $valid_semesters_for_year = [];
+    foreach($available_periods as $p) {
+        if($p['sch_academic_year'] == $selected_year) {
+            $valid_semesters_for_year[] = $p['sch_semester'];
+        }
+    }
+    // เรียงลำดับเทอม
+    sort($valid_semesters_for_year);
+    // ถ้าไม่มีข้อมูลเลย ให้ Default เป็นเทอม 1
+    if(empty($valid_semesters_for_year)) $valid_semesters_for_year = [1];
+
+    // ตรวจสอบค่าเทอมที่ส่งมา (GET) ว่ามีอยู่จริงในปีนั้นไหม
+    $req_semester = $_GET['semester'] ?? $default_semester;
+    if(in_array($req_semester, $valid_semesters_for_year)) {
+        $selected_semester = $req_semester;
+    } else {
+        // ถ้าเทอมที่ส่งมาไม่มีในปีนั้น (เช่น เปลี่ยนปีแล้วเทอมเดิมไม่มี) ให้ใช้เทอมแรกที่มี
+        $selected_semester = $valid_semesters_for_year[0];
+    }
+    // --------------------------------------------------------
 
     $time_slots = $pdo->query("SELECT * FROM time_slots ORDER BY tim_start ASC")->fetchAll();
 
@@ -244,12 +266,24 @@ try {
         .schedule-text-name { font-size: 11px; font-weight: bold; }
         .schedule-text-info { font-size: 10px; }
 
+        /* Responsive Scroll */
+        .table-responsive-scroll {
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+            width: 100%;
+        }
+        .table-responsive-scroll table {
+            min-width: 900px;
+        }
+
         @media print {
             @page { size: A4 landscape; margin: 5mm; }
             body { background: white !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
             .no-print { display: none !important; }
             #schedule-area { box-shadow: none; padding: 0; margin: 0; width: 100%; }
             nav { display: none !important; }
+            .table-responsive-scroll { overflow-x: visible; }
+            .table-responsive-scroll table { min-width: 100%; }
         }
         
         .card-premium {
@@ -328,7 +362,12 @@ try {
                         ?>
                     </select>
                     <select name="semester" class="bg-slate-50 border border-slate-200 rounded-lg px-4 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-500 font-bold text-slate-700" onchange="this.form.submit()">
-                        <?php for($s=1; $s<=3; $s++) echo "<option value='$s' ".($selected_semester==$s?'selected':'').">เทอม $s</option>"; ?>
+                        <?php 
+                        foreach($valid_semesters_for_year as $s) {
+                            $sel = ($selected_semester == $s) ? 'selected' : '';
+                            echo "<option value='$s' $sel>เทอม $s</option>";
+                        }
+                        ?>
                     </select>
                 </form>
                 <div class="w-px h-8 bg-slate-200 mx-1"></div>
@@ -339,9 +378,9 @@ try {
 
         <div id="schedule-area" class="max-w-[297mm] mx-auto min-h-[210mm]">
             
-            <div class="flex flex-row gap-4 mb-4 items-start pt-4">
+            <div class="flex flex-col md:flex-row gap-4 mb-4 items-start pt-4">
                 
-                <div class="w-[45%] flex flex-col gap-4">
+                <div class="w-full md:w-[45%] flex flex-col gap-4">
                     <div class="flex items-center gap-4 border-b border-black pb-4">
                         <img src="/images/cvc_logo.png" class="w-20 h-20 object-contain">
                         <div>
@@ -359,7 +398,7 @@ try {
                     </div>
                 </div>
 
-                <div class="w-[55%]">
+                <div class="w-full md:w-[55%]">
                     <table class="summary-table-sm w-full">
                         <thead>
                             <tr>
@@ -403,7 +442,7 @@ try {
                 </div>
             </div>
 
-            <div class="w-full">
+            <div class="w-full table-responsive-scroll">
                 <table class="schedule-grid text-[10px] table-fixed w-full">
                     <thead>
                         <tr>
@@ -451,11 +490,16 @@ try {
                                     $info = $schedule_data[$d][$t_id]['info']; 
                                     $hours = $schedule_data[$d][$t_id]['hours']; 
                                     
-                                    // คำนวณปีการศึกษาสำหรับแสดงผล
                                     $current_year_real = date('Y') + 543;
                                     $stu_lev = max(1, $current_year_real - ($info['cla_year'] ?? $current_year_real) + 1);
                                     $r_no = intval($info['cla_group_no'] ?? 0);
                                     $cls_txt = ($info['cla_name'] ?? '') . ".{$stu_lev}/{$r_no}";
+
+                                    // --- ส่วนตัดคำนำหน้าชื่อครู ---
+                                    $display_name = $info['tea_fullname'];
+                                    if ($mode !== 'teacher') {
+                                        $display_name = preg_replace('/^(นาย|นางสาว|นาง|ว่าที่ร้อยตรี|ว่าที่ร\.ต\.|ดร\.|ผศ\.|รศ\.|ศ\.|อ\.|อาจารย์)\s*/u', '', $display_name);
+                                    }
 
                                     echo "<td class='schedule-cell p-1 align-top h-16 overflow-hidden' colspan='{$hours}'>";
                                     echo "<div class='flex flex-col h-full justify-center items-center gap-0.5 w-full'>";
@@ -463,14 +507,14 @@ try {
                                     echo "<span class='schedule-text-code'>{$info['sub_code']}</span>"; 
                                     
                                     if ($mode == 'room') {
-                                        echo "<span class='schedule-text-info'>{$info['tea_fullname']}</span>";
+                                        echo "<span class='schedule-text-info'>{$display_name}</span>";
                                         echo "<span class='schedule-text-info font-bold'>{$cls_txt}</span>";
                                     } else {
                                         echo "<span class='schedule-text-info'>{$info['roo_id']}</span>";
                                         if ($mode == 'teacher') {
                                             echo "<span class='schedule-text-info font-bold'>{$cls_txt}</span>";
                                         } else {
-                                            echo "<span class='schedule-text-info'>{$info['tea_fullname']}</span>"; 
+                                            echo "<span class='schedule-text-info'>{$display_name}</span>"; 
                                         }
                                     }
                                     echo "</div></td>";
@@ -496,7 +540,6 @@ try {
             var element = document.getElementById('schedule-area');
             var mode = "<?php echo $mode; ?>";
             var id = "<?php echo $id; ?>";
-            // แก้ไขชื่อไฟล์ไม่ให้มีอักขระพิเศษ
             var safeId = id.replace(/[^a-zA-Z0-9]/g, '_');
             var filename = 'Schedule_' + mode + '_' + safeId + '.pdf';
 

@@ -1,40 +1,38 @@
 <?php
-// เริ่ม Buffer เพื่อดักจับข้อความขยะที่อาจหลุดออกมา
-ob_start();
-
+// admin/delete_plan_subject.php
 require_once '../config/db.php';
-require_once '../includes/auth.php';
-checkAdmin();
 
-// ล้างค่า Buffer ก่อนส่ง JSON (สำคัญมาก! ช่วยแก้ปัญหาหน้าจอกระตุก/ไม่เปลี่ยน)
-ob_clean();
-header('Content-Type: application/json');
+$id = $_GET['id'] ?? null;
+$pla_id = $_GET['pla_id'] ?? $_GET['plan_id'] ?? null;
+$year = $_GET['year'] ?? null;
+$semester = $_GET['semester'] ?? null;
+$is_ajax = isset($_GET['ajax']) && $_GET['ajax'] == 1;
 
-if (isset($_GET['id']) && isset($_GET['pla_id'])) {
-    $pls_id = $_GET['id'];
-    $pla_id = $_GET['pla_id'];
-
+if ($id) {
     try {
-        $sql = "DELETE FROM plan_subjects WHERE pls_id = ?";
-        $stmt = $pdo->prepare($sql);
-        $result = $stmt->execute([$pls_id]);
+        $stmt = $pdo->prepare("DELETE FROM plan_subjects WHERE pls_id = ?");
+        $stmt->execute([$id]);
         
-        if ($result) {
-            if (isset($_GET['ajax'])) {
-                echo json_encode(['status' => 'success', 'message' => 'ลบรายวิชาเรียบร้อยแล้ว']);
-                exit();
-            }
-            header("Location: manage_plan_subjects.php?pla_id=" . $pla_id);
-        } else {
-            echo json_encode(['status' => 'error', 'message' => 'ลบไม่สำเร็จ']);
+        if ($is_ajax) {
+            echo json_encode(['status'=>'success']);
+            exit;
         }
     } catch (PDOException $e) {
-        echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
+        if ($is_ajax) {
+            echo json_encode(['status'=>'error', 'message'=>$e->getMessage()]);
+            exit;
+        } else {
+            echo "Error: " . $e->getMessage();
+        }
     }
-} else {
-    echo json_encode(['status' => 'error', 'message' => 'ข้อมูลไม่ครบถ้วน']);
 }
 
-// จบการทำงานทันทีเพื่อป้องกัน HTML อื่นหลุดติดไป
-exit(); 
+// Redirect กลับหน้าเดิม (ถ้าไม่ใช่ Ajax)
+if (!$is_ajax) {
+    if ($pla_id && $year && $semester) {
+        header("Location: manage_plan_subjects.php?pla_id=$pla_id&year=$year&semester=$semester");
+    } else {
+        header("Location: manage_plans.php");
+    }
+}
 ?>

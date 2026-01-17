@@ -70,7 +70,7 @@ require_once '../includes/header.php';
 
 <div class="max-w-6xl mx-auto pb-12">
     <div class="mb-8">
-        <a href="dashboard.php" class="inline-flex items-center text-slate-400 hover:text-cvc-blue transition text-xs font-bold uppercase tracking-wider mb-2"><i class="fa-solid fa-arrow-left mr-2"></i> Dashboard</a>
+        <a href="index.php" class="inline-flex items-center text-slate-400 hover:text-cvc-blue transition text-xs font-bold uppercase tracking-wider mb-2"><i class="fa-solid fa-arrow-left mr-2"></i> Dashboard</a>
         <h1 class="text-3xl font-serif font-bold text-slate-800">ข้อมูลระดับชั้น <span class="text-slate-400 text-lg font-sans font-normal">(Levels)</span></h1>
     </div>
 

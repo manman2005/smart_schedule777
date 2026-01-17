@@ -221,11 +221,9 @@ require_once '../includes/header.php';
     
     <div class="flex justify-between items-center mb-4 no-print mt-4">
         <div class="flex items-center gap-2">
-            <a href="dashboard.php" class="bg-white border px-3 py-2 rounded-lg text-slate-500 hover:bg-slate-50 transition"><i class="fa-solid fa-arrow-left"></i></a>
-            <div>
-                <h1 class="text-xl font-serif font-bold text-slate-800">ระบบตรวจสอบตาราง</h1>
-                <p class="text-xs text-slate-500">Master Schedule View</p>
-            </div>
+           <a href="index.php" class="inline-flex items-center text-slate-400 hover:text-cvc-blue transition text-xs font-bold uppercase tracking-wider mb-2">
+            <i class="fa-solid fa-arrow-left mr-2"></i> Dashboard
+        </a>
         </div>
         <div class="flex gap-2">
             <button onclick="window.print()" class="bg-cvc-blue text-white px-4 py-2 rounded-lg text-sm font-bold shadow-md hover:bg-blue-800 transition"><i class="fa-solid fa-print mr-1"></i> พิมพ์ (Browser)</button>

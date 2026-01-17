@@ -1,4 +1,6 @@
 <?php
+// admin/manage_student_form.php
+// เวอร์ชัน: Cascading Filter + แสดงชื่อกลุ่มแบบ "สสส 2/1"
 require_once '../config/db.php';
 require_once '../includes/auth.php';
 checkAdmin();
@@ -11,6 +13,9 @@ $class_groups = $pdo->query("SELECT * FROM class_groups ORDER BY cla_id DESC")->
 
 $student = null;
 $title = "เพิ่มนักเรียนใหม่";
+
+// ปีปัจจุบัน (สำหรับคำนวณชั้นปี)
+$current_year = date('Y') + 543;
 
 // ตัวแปรสำหรับเก็บค่าเดิม
 $current_typ_id = '';
@@ -26,7 +31,7 @@ if (isset($_GET['id'])) {
     
     if ($student) {
         $current_cla_id = $student['cla_id'];
-        // Logic หาค่า Parent
+        // Logic หาค่า Parent เพื่อ Auto-select Dropdown
         $stmt_cla = $pdo->prepare("SELECT cla_major_code FROM class_groups WHERE cla_id = ?");
         $stmt_cla->execute([$current_cla_id]);
         $cla_data = $stmt_cla->fetch();
@@ -121,12 +126,17 @@ require_once '../includes/header.php';
                         <label class="block text-sm font-bold text-slate-700 mb-1 ml-1">กลุ่มเรียน (Class Group) <span class="text-red-500">*</span></label>
                         <select name="cla_id" id="sel_class" required class="w-full bg-white border-cvc-blue/30 text-cvc-blue font-bold focus:ring-cvc-blue/20">
                             <option value="">-- เลือกสาขาวิชาเพื่อกรองกลุ่มเรียน --</option>
-                            <?php foreach ($class_groups as $cg): ?>
+                            <?php foreach ($class_groups as $cg): 
+                                // --- ส่วนที่แก้ไข: คำนวณปี/ห้อง ---
+                                $stu_year = $current_year - $cg['cla_year'] + 1;
+                                $display_text = $cg['cla_name'] . " " . $stu_year . "/" . intval($cg['cla_group_no']);
+                            ?>
                                 <option value="<?php echo $cg['cla_id']; ?>" data-maj-code="<?php echo $cg['cla_major_code']; ?>" <?php echo ($current_cla_id == $cg['cla_id']) ? 'selected' : ''; ?>>
-                                    <?php echo $cg['cla_id'] . " - " . $cg['cla_name']; ?>
+                                    <?php echo $display_text; ?>
                                 </option>
                             <?php endforeach; ?>
                         </select>
+                        <p class="text-[10px] text-slate-400 mt-1 ml-1">* แสดงผลเป็น: ชื่อกลุ่ม ชั้นปี/ห้อง</p>
                     </div>
                 </div>
 

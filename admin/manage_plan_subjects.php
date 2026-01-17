@@ -1,32 +1,66 @@
 <?php
+// admin/manage_plan_subjects.php
+// เวอร์ชัน: Full Option + No Wrap Sub Code
+ini_set('display_errors', 1);
+error_reporting(E_ALL);
+
 require_once '../config/db.php';
 require_once '../includes/auth.php';
 checkAdmin();
 
 if (session_status() === PHP_SESSION_NONE) { session_start(); }
-if (!isset($_GET['pla_id'])) { header("Location: manage_plans.php"); exit(); }
-$pla_id = $_GET['pla_id'];
+
+// 1. รับค่า Parameter
+$pla_id = $_GET['pla_id'] ?? $_GET['plan_id'] ?? null;
+$year = $_GET['year'] ?? null;
+$semester = $_GET['semester'] ?? null;
+
+// ถ้าข้อมูลไม่ครบ
+if (($pla_id === null || $pla_id === '') || !$year || !$semester) { 
+    if ($pla_id !== null && $pla_id !== '') {
+        echo "<script>alert('กรุณาเลือกปีและเทอมจากหน้าโครงสร้างแผนครับ'); window.location='manage_plan_structure.php?id=$pla_id';</script>";
+    } else {
+        echo "<script>alert('ข้อมูลไม่ครบถ้วน'); window.location='manage_plans.php';</script>";
+    }
+    exit(); 
+}
 
 // Reset Filters
-if (isset($_GET['action']) && $_GET['action'] == 'reset') { unset($_SESSION['plan_filters']); header("Location: manage_plan_subjects.php?pla_id=$pla_id"); exit(); }
+if (isset($_GET['action']) && $_GET['action'] == 'reset') { 
+    unset($_SESSION['plan_filters']); 
+    header("Location: manage_plan_subjects.php?pla_id=$pla_id&year=$year&semester=$semester"); 
+    exit(); 
+}
 
 // Filter Logic
 $saved_filters = $_SESSION['plan_filters'] ?? [];
-$filter_cur = $saved_filters['cur'] ?? ''; $filter_sug = $saved_filters['sug'] ?? ''; $filter_com = $saved_filters['com'] ?? '';
+$filter_cur = $saved_filters['cur'] ?? ''; 
+$filter_sug = $saved_filters['sug'] ?? ''; 
+$filter_com = $saved_filters['com'] ?? '';
+$show_all_majors = $saved_filters['all_majors'] ?? 0;
+
 if (isset($_GET['filter_cur'])) { 
-    $filter_cur = $_GET['filter_cur']; $filter_sug = $_GET['filter_sug'] ?? '';
+    $filter_cur = $_GET['filter_cur']; 
+    $filter_sug = $_GET['filter_sug'] ?? '';
+    $show_all_majors = isset($_GET['show_all_majors']) ? 1 : 0;
+    
     if ($filter_sug == 6 || $filter_sug == 5) { $filter_com = ''; } else { $filter_com = $_GET['filter_com'] ?? ''; }
-    $_SESSION['plan_filters'] = ['cur' => $filter_cur, 'sug' => $filter_sug, 'com' => $filter_com];
+    $_SESSION['plan_filters'] = ['cur' => $filter_cur, 'sug' => $filter_sug, 'com' => $filter_com, 'all_majors' => $show_all_majors];
 }
 
 // Fetch Plan Data
-$plan = $pdo->prepare("SELECT * FROM study_plans WHERE pla_id = ?"); $plan->execute([$pla_id]); $plan_data = $plan->fetch();
+$plan = $pdo->prepare("SELECT * FROM study_plans WHERE pla_id = ?"); 
+$plan->execute([$pla_id]); 
+$plan_data = $plan->fetch();
+
+if (!$plan_data) die("ไม่พบข้อมูลแผนการเรียน (ID: $pla_id)");
 
 // Maj_id Logic
 $stmt_maj = $pdo->prepare("SELECT m.maj_id FROM study_plans p JOIN class_groups c ON p.cla_id = c.cla_id JOIN majors m ON c.cla_major_code = m.maj_code WHERE p.pla_id = ?");
 $stmt_maj->execute([$pla_id]);
 $target_maj_id = $stmt_maj->fetchColumn(); 
 
+// Data for Filters
 $curriculums = $pdo->query("SELECT c.*, l.lev_name FROM curriculums c JOIN levels l ON c.lev_id = l.lev_id ORDER BY l.lev_id ASC, c.cur_year DESC")->fetchAll();
 $groups = $pdo->query("SELECT * FROM subject_groups ORDER BY FIELD(sug_name, 'หมวดวิชาสมรรถนะแกนกลาง', 'หมวดวิชาสมรรถนะวิชาชีพ', 'หมวดวิชาเลือกเสรี', 'กิจกรรมเสริมหลักสูตร') ASC")->fetchAll();
 
@@ -39,44 +73,71 @@ if (!empty($filter_cur) && !empty($filter_sug) && $filter_sug != 6 && $filter_su
 // Fetch Subjects for Add List
 $subjects = [];
 if (!empty($filter_cur) && !empty($filter_sug)) {
-    if ($filter_sug == 6) { 
-        $sql_sub = "SELECT * FROM subjects WHERE cur_id = ?"; $params_sub = [$filter_cur]; 
-    } else { 
-        $sql_sub = "SELECT * FROM subjects WHERE cur_id = ? AND sug_id = ?"; $params_sub = [$filter_cur, $filter_sug]; 
-    }
+    $params_sub = [];
+    $sql_sub = "SELECT * FROM subjects WHERE cur_id = ?";
+    $params_sub[] = $filter_cur;
+
+    if ($filter_sug != 6) { $sql_sub .= " AND sug_id = ?"; $params_sub[] = $filter_sug; }
     if ($filter_sug != 6 && $filter_sug != 5 && !empty($filter_com)) { $sql_sub .= " AND sub_competency = ?"; $params_sub[] = $filter_com; }
     
-    if ($target_maj_id) { $sql_sub .= " AND (maj_id IS NULL OR maj_id = '' OR maj_id = ?)"; $params_sub[] = $target_maj_id; } 
-    else { $sql_sub .= " AND (maj_id IS NULL OR maj_id = '')"; }
+    // --- เงื่อนไข: ถ้าไม่ติ๊ก "แสดงทุกสาขา" ให้กรองเฉพาะสาขาของแผน ---
+    if (!$show_all_majors && $target_maj_id) { 
+        $sql_sub .= " AND (maj_id IS NULL OR maj_id = '' OR maj_id = ?)"; 
+        $params_sub[] = $target_maj_id; 
+    } 
+    // --------------------------------------------------------
 
     $sql_sub .= " ORDER BY sub_code ASC";
-    $stmt_sub = $pdo->prepare($sql_sub); $stmt_sub->execute($params_sub); $subjects = $stmt_sub->fetchAll();
+    $stmt_sub = $pdo->prepare($sql_sub); 
+    $stmt_sub->execute($params_sub); 
+    $subjects = $stmt_sub->fetchAll();
 }
 
-// Fetch Teachers (ดึง sug_id มาด้วยเพื่อใช้กรอง)
+// Fetch Teachers
 $teachers = $pdo->query("SELECT tea_id, tea_fullname, sug_id FROM teachers ORDER BY tea_fullname ASC")->fetchAll();
 
 // Existing Plan Subjects
 $sql = "SELECT ps.*, s.sub_code, s.sub_name, s.sub_credit, s.sub_hours, s.sub_th_pr_ot, s.sub_competency, s.sug_id, sg.sug_name, t.tea_fullname 
-        FROM plan_subjects ps JOIN subjects s ON ps.sub_id = s.sub_id LEFT JOIN subject_groups sg ON s.sug_id = sg.sug_id LEFT JOIN teachers t ON ps.tea_id = t.tea_id 
-        WHERE ps.pla_id = ? ORDER BY s.sub_code ASC"; 
-$stmt = $pdo->prepare($sql); $stmt->execute([$pla_id]); $plan_subjects = $stmt->fetchAll();
+        FROM plan_subjects ps 
+        JOIN subjects s ON ps.sub_id = s.sub_id 
+        LEFT JOIN subject_groups sg ON s.sug_id = sg.sug_id 
+        LEFT JOIN teachers t ON ps.tea_id = t.tea_id 
+        WHERE ps.pla_id = ? AND ps.pls_academic_year = ? AND ps.pls_semester = ? 
+        ORDER BY s.sub_code ASC"; 
+$stmt = $pdo->prepare($sql); 
+$stmt->execute([$pla_id, $year, $semester]); 
+$plan_subjects = $stmt->fetchAll();
 $existing_sub_ids = array_column($plan_subjects, 'sub_id');
 
 // Grouping Logic
 $grand_total_subjects = count($plan_subjects); $grand_total_credits = 0; $grand_total_hours = 0; $grouped_subjects = [];
 foreach ($plan_subjects as $ps) {
-    $current_sug_id = $ps['sug_id']; $current_sug_name = $ps['sug_name'];
+    $current_sug_id = $ps['sug_id']; 
+    $current_sug_name = $ps['sug_name'];
     if ($ps['pls_note'] === 'free_elective') { $current_sug_id = 6; $current_sug_name = 'หมวดวิชาเลือกเสรี'; }
     if (empty($current_sug_id)) { $current_sug_id = 999; $current_sug_name = 'ไม่ระบุหมวดวิชา'; }
-    if (!isset($grouped_subjects[$current_sug_id])) { $grouped_subjects[$current_sug_id] = ['name' => $current_sug_name, 'items' => [], 'credits' => 0, 'hours' => 0]; }
+    
+    if (!isset($grouped_subjects[$current_sug_id])) { 
+        $grouped_subjects[$current_sug_id] = ['name' => $current_sug_name, 'items' => [], 'credits' => 0, 'hours' => 0]; 
+    }
     $grouped_subjects[$current_sug_id]['items'][] = $ps;
     $grouped_subjects[$current_sug_id]['credits'] += intval($ps['sub_credit']);
     $grouped_subjects[$current_sug_id]['hours'] += intval($ps['sub_hours']); 
-    $grand_total_credits += intval($ps['sub_credit']); $grand_total_hours += intval($ps['sub_hours']);
+    $grand_total_credits += intval($ps['sub_credit']); 
+    $grand_total_hours += intval($ps['sub_hours']);
 }
 ksort($grouped_subjects);
-$group_colors = [ 1=>['bg'=>'bg-orange-50','border'=>'border-orange-400'], 2=>['bg'=>'bg-blue-50','border'=>'border-blue-400'], 5=>['bg'=>'bg-pink-50','border'=>'border-pink-400'], 6=>['bg'=>'bg-teal-50','border'=>'border-teal-400'], 999=>['bg'=>'bg-slate-50','border'=>'border-slate-400'] ];
+
+// --- สีครบทุกหมวด ---
+$group_colors = [ 
+    1 => ['bg'=>'bg-orange-50','border'=>'border-orange-400'], 
+    2 => ['bg'=>'bg-blue-50','border'=>'border-blue-400'], 
+    3 => ['bg'=>'bg-indigo-50','border'=>'border-indigo-400'], 
+    4 => ['bg'=>'bg-cyan-50','border'=>'border-cyan-400'],     
+    5 => ['bg'=>'bg-pink-50','border'=>'border-pink-400'], 
+    6 => ['bg'=>'bg-teal-50','border'=>'border-teal-400'], 
+    999 => ['bg'=>'bg-slate-50','border'=>'border-slate-400'] 
+];
 
 require_once '../includes/header.php';
 ?>
@@ -86,15 +147,25 @@ require_once '../includes/header.php';
     .fade-out { opacity: 0; transform: translateX(20px); transition: all 0.3s ease-out; }
     .modal { transition: opacity 0.25s ease; }
     body.modal-active { overflow-x: hidden; overflow-y: hidden !important; }
+    .custom-scrollbar::-webkit-scrollbar { width: 6px; }
+    .custom-scrollbar::-webkit-scrollbar-track { background: #f1f5f9; }
+    .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
 </style>
 
 <div class="max-w-7xl mx-auto space-y-6 pb-12 relative">
     
     <div class="flex flex-col md:flex-row justify-between items-start gap-4">
         <div>
-            <a href="manage_plans.php" class="text-slate-400 hover:text-cvc-blue text-sm font-bold flex items-center gap-2 mb-2"><i class="fa-solid fa-arrow-left"></i> กลับหน้ารายชื่อแผน</a>
+            <a href="manage_plan_structure.php?id=<?php echo $pla_id; ?>" class="text-slate-400 hover:text-cvc-blue text-sm font-bold flex items-center gap-2 mb-2">
+                <i class="fa-solid fa-arrow-left"></i> กลับหน้าโครงสร้างแผน
+            </a>
             <h1 class="text-3xl font-serif font-bold text-slate-800">จัดการรายวิชาในแผน</h1>
-            <p class="text-slate-500 font-medium"><?php echo htmlspecialchars($plan_data['pla_name']); ?></p>
+            <div class="text-slate-500 font-medium text-sm mt-1">
+                แผน: <span class="text-indigo-700 font-bold"><?php echo htmlspecialchars($plan_data['pla_name']); ?></span>
+                <span class="mx-2">|</span>
+                ปีการศึกษา: <span class="text-slate-800 font-bold bg-slate-100 px-2 py-0.5 rounded"><?php echo $year; ?></span>
+                ภาคเรียน: <span class="text-slate-800 font-bold bg-slate-100 px-2 py-0.5 rounded"><?php echo $semester; ?></span>
+            </div>
         </div>
         <div class="flex flex-wrap gap-3" id="stats-container">
             <div class="bg-white border border-slate-200 px-5 py-3 rounded-xl shadow-sm text-center min-w-[100px] flex-1 md:flex-none">
@@ -116,20 +187,34 @@ require_once '../includes/header.php';
         <div class="bg-slate-50 px-6 py-4 border-b border-slate-200 flex justify-between items-center">
             <h3 class="font-bold text-slate-700 flex items-center gap-2"><i class="fa-solid fa-circle-plus text-green-500"></i> เพิ่มรายวิชา</h3>
             <?php if($filter_cur || $filter_sug): ?>
-                <a href="?pla_id=<?php echo $pla_id; ?>&action=reset" class="text-xs text-red-500 hover:underline"><i class="fa-solid fa-rotate-left"></i> รีเซ็ตตัวกรอง</a>
+                <a href="?pla_id=<?php echo $pla_id; ?>&year=<?php echo $year; ?>&semester=<?php echo $semester; ?>&action=reset" class="text-xs text-red-500 hover:underline"><i class="fa-solid fa-rotate-left"></i> รีเซ็ตตัวกรอง</a>
             <?php endif; ?>
         </div>
         <div class="p-6">
-            <form action="" method="GET" id="filterForm" class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+            <form action="" method="GET" id="filterForm">
                 <input type="hidden" name="pla_id" value="<?php echo $pla_id; ?>">
-                <div><label class="block text-xs font-bold text-slate-500 mb-1">1. หลักสูตร</label><select name="filter_cur" class="w-full text-sm" onchange="document.getElementById('filterForm').submit()"><option value="">-- เลือกหลักสูตร --</option><?php foreach ($curriculums as $c): ?><option value="<?php echo $c['cur_id']; ?>" <?php echo $filter_cur == $c['cur_id'] ? 'selected' : ''; ?>><?php echo $c['lev_name'] . ' ' . $c['cur_year']; ?></option><?php endforeach; ?></select></div>
-                <div><label class="block text-xs font-bold text-slate-500 mb-1">2. หมวดวิชา</label><select name="filter_sug" class="w-full text-sm disabled:bg-slate-100" onchange="document.getElementById('filterForm').submit()" <?php echo empty($filter_cur) ? 'disabled' : ''; ?>><option value="">-- เลือกหมวด --</option><?php foreach ($groups as $g): ?><option value="<?php echo $g['sug_id']; ?>" <?php echo $filter_sug == $g['sug_id'] ? 'selected' : ''; ?>><?php echo $g['sug_name']; ?></option><?php endforeach; ?></select></div>
-                <div><label class="block text-xs font-bold text-slate-500 mb-1">3. สมรรถนะ (ถ้ามี)</label><select name="filter_com" class="w-full text-sm disabled:bg-slate-100" onchange="document.getElementById('filterForm').submit()" <?php echo (empty($filter_cur) || empty($filter_sug) || $filter_sug == 6 || $filter_sug == 5) ? 'disabled' : ''; ?>><option value="">-- ทั้งหมด --</option><?php foreach ($competencies_list as $com): ?><option value="<?php echo $com; ?>" <?php echo $filter_com == $com ? 'selected' : ''; ?>><?php echo $com; ?></option><?php endforeach; ?></select></div>
+                <input type="hidden" name="year" value="<?php echo $year; ?>">
+                <input type="hidden" name="semester" value="<?php echo $semester; ?>">
+                
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6 items-end">
+                    <div><label class="block text-xs font-bold text-slate-500 mb-1">1. หลักสูตร</label><select name="filter_cur" class="w-full text-sm" onchange="document.getElementById('filterForm').submit()"><option value="">-- เลือกหลักสูตร --</option><?php foreach ($curriculums as $c): ?><option value="<?php echo $c['cur_id']; ?>" <?php echo $filter_cur == $c['cur_id'] ? 'selected' : ''; ?>><?php echo $c['lev_name'] . ' ' . $c['cur_year']; ?></option><?php endforeach; ?></select></div>
+                    <div><label class="block text-xs font-bold text-slate-500 mb-1">2. หมวดวิชา</label><select name="filter_sug" class="w-full text-sm disabled:bg-slate-100" onchange="document.getElementById('filterForm').submit()" <?php echo empty($filter_cur) ? 'disabled' : ''; ?>><option value="">-- เลือกหมวด --</option><?php foreach ($groups as $g): ?><option value="<?php echo $g['sug_id']; ?>" <?php echo $filter_sug == $g['sug_id'] ? 'selected' : ''; ?>><?php echo $g['sug_name']; ?></option><?php endforeach; ?></select></div>
+                    <div><label class="block text-xs font-bold text-slate-500 mb-1">3. สมรรถนะ (ถ้ามี)</label><select name="filter_com" class="w-full text-sm disabled:bg-slate-100" onchange="document.getElementById('filterForm').submit()" <?php echo (empty($filter_cur) || empty($filter_sug) || $filter_sug == 6 || $filter_sug == 5) ? 'disabled' : ''; ?>><option value="">-- ทั้งหมด --</option><?php foreach ($competencies_list as $com): ?><option value="<?php echo $com; ?>" <?php echo $filter_com == $com ? 'selected' : ''; ?>><?php echo $com; ?></option><?php endforeach; ?></select></div>
+                    
+                    <div class="pb-2">
+                        <label class="inline-flex items-center cursor-pointer">
+                            <input type="checkbox" name="show_all_majors" value="1" onchange="document.getElementById('filterForm').submit()" <?php echo $show_all_majors ? 'checked' : ''; ?> class="w-4 h-4 text-blue-600 rounded focus:ring-blue-500 border-gray-300">
+                            <span class="ml-2 text-sm text-slate-600 font-bold">แสดงวิชาทุกสาขา</span>
+                        </label>
+                    </div>
+                </div>
             </form>
 
             <?php if (!empty($filter_cur) && !empty($filter_sug)): ?>
             <form id="addSubjectsForm">
                 <input type="hidden" name="pla_id" value="<?php echo $pla_id; ?>">
+                <input type="hidden" name="year" value="<?php echo $year; ?>">
+                <input type="hidden" name="semester" value="<?php echo $semester; ?>">
                 <input type="hidden" name="filter_sug_context" value="<?php echo $filter_sug; ?>">
 
                 <div class="mb-4 bg-slate-50 border border-slate-200 rounded-xl p-4 h-[400px] overflow-y-auto custom-scrollbar relative">
@@ -137,6 +222,7 @@ require_once '../includes/header.php';
                         <div class="absolute inset-0 flex flex-col items-center justify-center text-slate-400">
                             <i class="fa-regular fa-folder-open text-4xl mb-2"></i>
                             <p>ไม่พบรายวิชาตามเงื่อนไข</p>
+                            <?php if(!$show_all_majors): ?><p class="text-xs text-red-400 mt-2">*ลองติ๊ก "แสดงวิชาทุกสาขา" ดูนะครับ</p><?php endif; ?>
                         </div>
                     <?php else: ?>
                         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
@@ -204,7 +290,7 @@ require_once '../includes/header.php';
                     <tbody class="divide-y divide-slate-100 bg-white">
                         <?php foreach ($group['items'] as $ps): ?>
                         <tr class="hover:bg-blue-50/20 transition group" id="row_<?php echo $ps['pls_id']; ?>" data-credit="<?php echo $ps['sub_credit']; ?>" data-hours="<?php echo $ps['sub_hours']; ?>">
-                            <td class="px-6 py-3 align-middle text-center"><span class="font-mono font-bold text-cvc-blue bg-blue-50 px-2 py-1 rounded border border-blue-100 shadow-sm text-sm"><?php echo $ps['sub_code']; ?></span></td>
+                            <td class="px-6 py-3 align-middle text-center whitespace-nowrap"><span class="font-mono font-bold text-cvc-blue bg-blue-50 px-2 py-1 rounded border border-blue-100 shadow-sm text-sm"><?php echo $ps['sub_code']; ?></span></td>
                             <td class="px-6 py-3 align-middle"><div class="font-medium text-slate-700 text-sm"><?php echo $ps['sub_name']; ?></div></td>
                             <td class="px-6 py-3 align-middle text-center"><span class="font-bold text-slate-600 bg-slate-50 px-2.5 py-1 rounded-full border border-slate-200 text-xs"><?php echo $ps['sub_credit']; ?></span></td>
                             <td class="px-6 py-3 align-middle text-center"><span class="font-bold text-amber-600 bg-amber-50 px-2.5 py-1 rounded-full border border-amber-200 text-xs shadow-sm"><?php echo $ps['sub_hours']; ?></span></td>
@@ -255,7 +341,7 @@ require_once '../includes/header.php';
                                 <label class="block text-sm font-bold text-slate-700 mb-2">เลือกครูผู้สอน (เฉพาะหมวดนี้)</label>
                                 <select id="modal_tea_id" name="tea_id" class="w-full text-sm border border-slate-300 rounded-lg py-2 px-3 focus:ring-cvc-blue focus:border-cvc-blue">
                                     <option value="">-- ปล่อยว่าง (รอเลือกครู) --</option>
-                                    </select>
+                                </select>
                             </form>
                         </div>
                     </div>
@@ -270,7 +356,6 @@ require_once '../includes/header.php';
 </div>
 
 <script>
-// รับข้อมูลครูทั้งหมดจาก PHP มาเป็น JSON
 const allTeachers = <?php echo json_encode($teachers); ?>;
 
 function toggleTeacherSelect(checkbox, subId) {
@@ -282,36 +367,21 @@ function toggleTeacherSelect(checkbox, subId) {
     }
 }
 
-// === Function เปิด Modal และกรองครู ===
 function openEditTeacher(pls_id, current_tea_id, sub_name, target_sug_id) {
     document.getElementById('modalSubName').innerText = sub_name;
     document.getElementById('modal_pls_id').value = pls_id;
-    
-    // 1. เข้าถึง Select Element
     const select = document.getElementById('modal_tea_id');
-    select.innerHTML = '<option value="">-- ปล่อยว่าง (รอเลือกครู) --</option>'; // ล้างค่าเก่า
-    
-    // 2. วนลูปสร้าง Option ใหม่ โดยกรองเฉพาะ sug_id ที่ตรงกัน
+    select.innerHTML = '<option value="">-- ปล่อยว่าง (รอเลือกครู) --</option>'; 
     allTeachers.forEach(tea => {
-        // เงื่อนไข: ถ้า sug_id ตรงกัน หรือ หมวดเป้าหมายเป็น null (เผื่อไว้) ให้แสดง
-        if (target_sug_id && tea.sug_id == target_sug_id) {
-            const option = document.createElement('option');
-            option.value = tea.tea_id;
-            option.text = tea.tea_fullname;
-            select.appendChild(option);
-        } else if (!target_sug_id) {
-            // ถ้าวิชาไม่มีหมวด (เช่น เลือกเสรีบางกรณี) ให้แสดงทั้งหมด (หรือจะปรับให้ไม่แสดงก็ได้ตามต้องการ)
+        if ((target_sug_id && tea.sug_id == target_sug_id) || !target_sug_id) {
             const option = document.createElement('option');
             option.value = tea.tea_id;
             option.text = tea.tea_fullname;
             select.appendChild(option);
         }
     });
-
-    // 3. เลือกค่าเดิม (ถ้ามี)
     if (current_tea_id) {
         select.value = current_tea_id;
-        // กรณีครูคนเดิม ย้ายหมวดไปแล้ว แต่ยังสอนวิชานี้อยู่ -> ต้องบังคับเพิ่ม Option ให้เขาด้วย เพื่อไม่ให้ค่าหาย
         if (select.value === "") { 
             const originalTea = allTeachers.find(t => t.tea_id == current_tea_id);
             if (originalTea) {
@@ -325,7 +395,6 @@ function openEditTeacher(pls_id, current_tea_id, sub_name, target_sug_id) {
     } else {
         select.value = "";
     }
-
     document.getElementById('teacherModal').classList.remove('hidden');
     document.body.classList.add('modal-active');
 }
@@ -338,11 +407,9 @@ function closeEditTeacher() {
 async function saveTeacherChange() {
     const pls_id = document.getElementById('modal_pls_id').value;
     const tea_id = document.getElementById('modal_tea_id').value;
-    
     const select = document.getElementById('modal_tea_id');
     const tea_name = select.selectedIndex >= 0 ? select.options[select.selectedIndex].text : '';
     const is_empty = (tea_id === "");
-
     const btn = document.querySelector('#teacherModal button[onclick="saveTeacherChange()"]');
     const originalText = btn.innerText;
     btn.innerText = 'กำลังบันทึก...';
@@ -352,19 +419,13 @@ async function saveTeacherChange() {
         const formData = new FormData();
         formData.append('pls_id', pls_id);
         formData.append('tea_id', tea_id);
-
-        const response = await fetch('edit_plan_teacher.php', {
-            method: 'POST',
-            body: formData
-        });
+        const response = await fetch('edit_plan_teacher.php', { method: 'POST', body: formData });
         const data = await response.json();
-
         if (data.status === 'success') {
             const cell = document.getElementById('teacher_cell_' + pls_id);
             if (is_empty) {
                 cell.innerHTML = '<span class="bg-orange-50 text-orange-700 px-3 py-1.5 rounded-lg text-xs font-bold border border-orange-100 flex items-center gap-2 shadow-sm animate-pulse w-fit"><i class="fa-regular fa-clock"></i> รอการเลือกครูผู้สอน</span>';
             } else {
-                // ตัดคำว่า (ต่างหมวด) ออกถ้ามี เพื่อความสวยงาม
                 const cleanName = tea_name.replace(' (ต่างหมวด)', '');
                 cell.innerHTML = `<span class="bg-emerald-50 text-emerald-700 px-3 py-1.5 rounded-lg text-xs font-bold border border-emerald-100 flex items-center gap-2 shadow-sm w-fit"><i class="fa-solid fa-user-check"></i> ${cleanName}</span>`;
             }
@@ -375,7 +436,6 @@ async function saveTeacherChange() {
             Swal.fire('Error', data.message, 'error');
         }
     } catch (error) {
-        console.error(error);
         Swal.fire('Error', 'เกิดข้อผิดพลาด', 'error');
     } finally {
         btn.innerText = originalText;
@@ -397,14 +457,14 @@ async function deleteSubject(pls_id, pla_id, btn) {
 
     if (result.isConfirmed) {
         try {
-            const response = await fetch(`delete_plan_subject.php?id=${pls_id}&pla_id=${pla_id}&ajax=1`);
+            const response = await fetch(`delete_plan_subject.php?id=${pls_id}&pla_id=${pla_id}&year=<?php echo $year; ?>&semester=<?php echo $semester; ?>&ajax=1`);
             const data = await response.json();
             if (data.status === 'success') {
                 const row = btn.closest('tr');
                 row.style.transition = 'all 0.5s ease';
                 row.style.opacity = '0';
                 row.style.transform = 'translateX(50px)';
-                setTimeout(() => { row.remove(); updateTotals(); }, 500);
+                setTimeout(() => { window.location.reload(); }, 500);
             } else { Swal.fire('Error', data.message, 'error'); }
         } catch (error) { Swal.fire('Error', 'Connect Error', 'error'); }
     }

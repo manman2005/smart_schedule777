@@ -10,7 +10,7 @@
                     <span class="hover:text-indigo-600 cursor-pointer transition">ช่วยเหลือ</span>
                     <span class="hover:text-indigo-600 cursor-pointer transition">นโยบายความเป็นส่วนตัว</span>
                     <div class="text-xs bg-slate-100 px-2 py-1 rounded border border-slate-200">
-                        Ver 77.77
+                        จัดทำโดย:นายวรชัย ต๊ะวงค์ สสส2/1 เลขที่7
                     </div>
                 </div>
             </div>
