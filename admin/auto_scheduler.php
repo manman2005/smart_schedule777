@@ -1,9 +1,20 @@
 <?php
+// htdocs/admin/auto_scheduler.php
 require_once '../config/db.php';
 require_once '../includes/auth.php';
 checkAdmin();
 require_once '../includes/header.php';
 ?>
+
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<style>
+    div:where(.swal2-container) div:where(.swal2-popup) {
+        font-family: 'Sarabun', sans-serif !important;
+        border-radius: 1rem !important;
+    }
+    .swal2-title { font-size: 1.5rem !important; }
+    .swal2-html-container { font-size: 1rem !important; }
+</style>
 
 <div class="max-w-7xl mx-auto pb-12">
     <div class="mb-8">
@@ -187,7 +198,22 @@ function showResult(status, title, desc, advice = []) {
 async function clearSchedule() {
     const year = document.getElementById('year').value; 
     const semester = document.getElementById('semester').value;
-    if(!confirm(`⚠️ คำเตือน!\n\nล้างข้อมูลตารางสอนทั้งหมดของ\nปี ${year} เทอม ${semester}\nยืนยันหรือไม่?`)) return;
+    
+    // [แก้ไข] ใช้ SweetAlert2 แทน confirm
+    const result = await Swal.fire({
+        title: 'ยืนยันการล้างข้อมูล?',
+        html: `ต้องการลบตารางสอนทั้งหมดของ<br>ปี <b>${year}</b> ภาคเรียนที่ <b>${semester}</b><br><span class="text-red-500 font-bold text-sm mt-2 block">⚠️ การกระทำนี้ไม่สามารถเรียกคืนได้!</span>`,
+        icon: 'error',
+        showCancelButton: true,
+        confirmButtonColor: '#ef4444',
+        cancelButtonColor: '#64748b',
+        confirmButtonText: '<i class="fa-solid fa-trash-can mr-2"></i>ยืนยันลบข้อมูล',
+        cancelButtonText: 'ยกเลิก',
+        reverseButtons: true,
+        focusCancel: true
+    });
+
+    if (!result.isConfirmed) return;
     
     document.getElementById('progressContainer').classList.remove('hidden'); 
     document.getElementById('resultOverlay').classList.add('hidden'); 
@@ -200,6 +226,14 @@ async function clearSchedule() {
         if(data.status === 'success') { 
             updateProgress(100, "Done"); 
             log(data.message, 'success'); 
+            // เปลี่ยน Popup สำเร็จให้สวยด้วย
+            Swal.fire({
+                title: 'เรียบร้อย!',
+                text: 'ล้างข้อมูลตารางสอนสำเร็จแล้ว',
+                icon: 'success',
+                timer: 2000,
+                showConfirmButton: false
+            });
             showResult('success', 'ล้างข้อมูลสำเร็จ', data.message); 
         } else { 
             throw new Error(data.message); 
@@ -234,7 +268,20 @@ async function startScheduler() {
     const semester = document.getElementById('semester').value;
     const btn = document.getElementById('btnStart');
     
-    if(!confirm(`ยืนยันการจัดตารางใหม่สำหรับปี ${year} เทอม ${semester} ?\n(ข้อมูลเดิมในเทอมนี้จะถูกล้าง)`)) return;
+    // [แก้ไข] ใช้ SweetAlert2 แทน confirm
+    const result = await Swal.fire({
+        title: 'ยืนยันการจัดตารางใหม่?',
+        html: `สำหรับปี <b>${year}</b> ภาคเรียนที่ <b>${semester}</b><br><span class="text-amber-600 text-sm mt-2 block"><i class="fa-solid fa-triangle-exclamation mr-1"></i> ข้อมูลตารางสอนเดิมในเทอมนี้จะถูกล้างและจัดใหม่</span>`,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#2563eb',
+        cancelButtonColor: '#d33',
+        confirmButtonText: '<i class="fa-solid fa-bolt mr-2"></i>ใช่, เริ่มประมวลผล',
+        cancelButtonText: 'ยกเลิก',
+        reverseButtons: true
+    });
+
+    if (!result.isConfirmed) return;
 
     btn.disabled = true; btn.classList.add('opacity-50', 'cursor-not-allowed');
     document.getElementById('progressContainer').classList.remove('hidden');
@@ -261,22 +308,38 @@ async function startScheduler() {
         const rooms = data.rooms; 
         const times = data.times; 
         const days = data.days;
+        const busySlots = data.busy_slots || []; 
 
         log(`โหลดข้อมูลสำเร็จ: ${rawTasks.length} วิชา, ${rooms.length} ห้อง`, 'success');
 
-        // --- 1. [NEW] ตรวจสอบรายวิชาที่ไม่มีครู ---
-        // ฟีเจอร์ใหม่: เช็คว่ามีวิชาไหน tea_id เป็น null หรือไม่
+        // --- สร้างชื่อกลุ่มเรียนแบบเต็ม (ชื่อ.ปี/ห้อง) ---
+        rawTasks.forEach(t => {
+            if(t.cla_year && t.cla_group_no) {
+                let level = Math.max(1, parseInt(year) - parseInt(t.cla_year) + 1);
+                t.full_cla_name = `${t.cla_name}.${level}/${parseInt(t.cla_group_no)}`;
+            } else {
+                t.full_cla_name = t.cla_name;
+            }
+        });
+
+        // --- 1. ตรวจสอบรายวิชาที่ไม่มีครู ---
         let missingTeacherSubjects = rawTasks.filter(t => !t.tea_id);
         
         if (missingTeacherSubjects.length > 0) {
             let errorList = missingTeacherSubjects.map(t => 
-                `<span class="text-amber-400 font-bold">${t.sub_code}</span> ${t.sub_name} (กลุ่ม: ${t.cla_name})`
+                `<span class="text-amber-400 font-bold">${t.sub_code}</span> ${t.sub_name} (กลุ่ม: ${t.full_cla_name})`
             );
-            
-            // เพิ่มคำแนะนำด้านบน
             errorList.unshift('<span class="text-white font-bold">⚠️ กรุณากำหนดครูผู้สอนให้ครบทุกวิชาก่อนเริ่มจัดตาราง</span>');
             
             log('STOP: พบรายวิชาที่ยังไม่ระบุผู้สอน', 'error');
+            
+            // แจ้งเตือนด้วย SweetAlert2
+            Swal.fire({
+                title: 'ข้อมูลไม่พร้อม!',
+                text: 'พบรายวิชาที่ยังไม่ระบุครูผู้สอน กรุณาตรวจสอบ',
+                icon: 'warning'
+            });
+
             showResult('warning', 'ข้อมูลไม่พร้อม (Missing Teachers)', 
                 `พบรายวิชาจำนวน ${missingTeacherSubjects.length} รายการ ที่ยังไม่ได้ระบุครูผู้สอน`, 
                 errorList
@@ -284,12 +347,10 @@ async function startScheduler() {
             
             document.getElementById('btnStart').disabled = false;
             document.getElementById('btnStart').classList.remove('opacity-50', 'cursor-not-allowed');
-            return; // หยุดทำงานทันที ไม่ส่งข้อมูลไป Server
+            return; 
         }
-        // ------------------------------------------
 
         let tasks = [];
-        
         rawTasks.forEach(t => { 
             let tpn = t.sub_th_pr_ot ? t.sub_th_pr_ot.split('-') : [0,0,0]; 
             let theoryHours = parseInt(tpn[0]) || 0;
@@ -351,8 +412,20 @@ async function startScheduler() {
 
                         for(let k=0; k<task.hoursNeeded; k++) {
                             let slot = times[tIdx+k];
+                            // 1. เช็คพักเที่ยง
                             if(slot.tim_range.startsWith('12:00')) { conflict = true; break; }
+
+                            // 2. เช็คเวลาครูไม่ว่าง (Teacher Unavailability)
+                            if (task.tea_id) {
+                                let isTeacherBusy = busySlots.some(b => 
+                                    b.tea_id == task.tea_id && 
+                                    b.day_id == day && 
+                                    b.tim_id == slot.tim_id
+                                );
+                                if (isTeacherBusy) { conflict = true; break; }
+                            }
                             
+                            // 3. เช็คตารางชน (Conflict Map)
                             let isConflict = conflictMap.some(c => 
                                 c.day == day && c.time == slot.tim_id && (
                                     (c.type == 'room' && c.id == room.roo_id) ||      
@@ -385,9 +458,15 @@ async function startScheduler() {
             if(!isPlaced) { 
                 failCount++; 
                 let reason = `<b>${task.sub_code}</b>: `;
-                if(task.tea_id) reason += "ครูติดสอน/ ";
+                
+                // แสดงชื่อครูที่ติดภารกิจ
+                if(task.tea_id) {
+                    let teacherName = task.tea_fullname || 'ครู';
+                    reason += `<span class="text-red-300">${teacherName}</span> ติดสอน/ไม่ว่าง/ `;
+                }
+
                 if(task.preferredRoom) reason += `หาห้อง ${task.preferredRoom} ไม่ได้/ `;
-                reason += `กลุ่ม ${task.cla_name} เต็ม`;
+                reason += `กลุ่ม ${task.full_cla_name} เต็ม`;
                 
                 log(`FAILED: ${task.sub_code} - Resource Conflict`, 'error'); 
                 failedDetails.push(reason);
@@ -412,7 +491,7 @@ async function startScheduler() {
             if (failCount > 0) {
                 let advice = [
                     "ลองตรวจสอบรายวิชาที่มีเงื่อนไขห้องเรียนเฉพาะเจาะจง",
-                    "ตรวจสอบภาระงานสอนของครู (อาจมีสอนซ้อนกัน)",
+                    "ตรวจสอบภาระงานสอนของครู (อาจมีสอนซ้อนกัน หรือครูระบุวันไม่ว่างมากเกินไป)",
                     "ลองเพิ่มจำนวนห้องเรียน หรือขยายเวลาเรียน",
                     "<b>รายการที่จัดไม่ได้:</b>"
                 ];
@@ -421,6 +500,12 @@ async function startScheduler() {
 
                 showResult('warning', 'จัดตารางได้ไม่ครบถ้วน', `สำเร็จ ${tasks.length - failCount} / ล้มเหลว ${failCount} รายการ`, advice);
             } else {
+                Swal.fire({
+                    title: 'สำเร็จ!',
+                    text: 'จัดตารางเรียนเรียบร้อยแล้ว 100%',
+                    icon: 'success',
+                    confirmButtonText: 'ตกลง'
+                });
                 showResult('success', 'ประมวลผลเสร็จสิ้น!', 'จัดตารางเรียนเรียบร้อยแล้ว 100%');
             }
         } else {

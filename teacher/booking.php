@@ -1,11 +1,19 @@
 <?php
+// htdocs/teacher/booking.php
 require_once '../config/db.php';
 require_once '../includes/auth.php';
 checkTeacher();
 
 $tea_id = $_SESSION['user_id'];
 
-// 1. ดึงข้อมูลว่าอาจารย์สังกัดหมวดวิชาอะไร (sug_id)
+// --- [NEW] 1. ตรวจสอบสถานะระบบ ---
+$stmt_sys = $pdo->prepare("SELECT setting_value FROM system_settings WHERE setting_key = 'teacher_booking'");
+$stmt_sys->execute();
+$system_status = $stmt_sys->fetchColumn(); 
+// ค่าจะเป็น '1' (เปิด) หรือ '0' (ปิด)
+// --------------------------------
+
+// 2. ดึงข้อมูลอาจารย์
 $stmt_tea = $pdo->prepare("SELECT t.sug_id, sg.sug_name 
                            FROM teachers t 
                            LEFT JOIN subject_groups sg ON t.sug_id = sg.sug_id 
@@ -16,8 +24,7 @@ $teacher_info = $stmt_tea->fetch();
 $teacher_sug_id = $teacher_info['sug_id'];
 $teacher_sug_name = $teacher_info['sug_name'] ?? 'ไม่ระบุสังกัด';
 
-// 2. ดึงรายวิชาที่เปิดให้จอง (ยังไม่มีคนสอน) และ **ตรงกับหมวดวิชาของอาจารย์**
-// เพิ่มเงื่อนไข AND s.sug_id = ?
+// 3. ดึงรายวิชาที่เปิดให้จอง
 $sql = "SELECT ps.*, s.sub_code, s.sub_name, s.sub_credit, s.sub_th_pr_ot,
                p.pla_name, p.pla_start_year, p.pla_semester, 
                c.cla_name, c.cla_level_code, sg.sug_name
@@ -45,8 +52,20 @@ $open_subjects = $stmt->fetchAll();
         </a>
         <h2 class="text-2xl font-serif font-bold text-slate-800">จองรายวิชาสอน</h2>
     </div>
+
+    <?php if ($system_status == '0'): ?>
+        <div class="bg-red-50 border-l-4 border-red-500 p-6 rounded-r-xl shadow-sm mb-8 flex items-start gap-4">
+            <div class="bg-red-100 p-3 rounded-full text-red-500">
+                <i class="fa-solid fa-lock text-2xl"></i>
+            </div>
+            <div>
+                <h3 class="text-lg font-bold text-red-700">ระบบปิดการจองรายวิชาชั่วคราว</h3>
+                <p class="text-red-600 text-sm mt-1">ขณะนี้เจ้าหน้าที่กำลังดำเนินการจัดตารางสอน หรือหมดเขตการจองรายวิชาแล้ว <br>คุณสามารถดูรายวิชาได้ แต่ไม่สามารถกดเลือกสอนได้</p>
+            </div>
+        </div>
+    <?php endif; ?>
     
-    <div class="card-premium overflow-hidden">
+    <div class="card-premium overflow-hidden <?php echo ($system_status == '0') ? 'opacity-75 grayscale-[0.5]' : ''; ?>">
         <div class="p-6 border-b border-slate-100 bg-gradient-to-r from-blue-50 to-white flex flex-col md:flex-row justify-between items-center gap-4">
             <div>
                 <h2 class="text-xl font-bold text-cvc-blue flex items-center gap-2">
@@ -113,12 +132,18 @@ $open_subjects = $stmt->fetchAll();
                                 </span>
                             </td>
                             <td class="p-4 text-center align-middle">
-                                <form action="booking_db.php" method="POST" onsubmit="return confirm('ยืนยันที่จะสอนรายวิชานี้?\n\nวิชา: <?php echo $row['sub_name']; ?>\nกลุ่ม: <?php echo $row['cla_name']; ?>');">
-                                    <input type="hidden" name="pls_id" value="<?php echo $row['pls_id']; ?>">
-                                    <button type="submit" class="w-full bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white px-4 py-2 rounded-lg shadow-md hover:shadow-lg transition transform hover:-translate-y-0.5 text-xs font-bold flex items-center justify-center gap-2">
-                                        <i class="fa-solid fa-check-circle"></i> เลือกสอน
+                                <?php if ($system_status == '1'): ?>
+                                    <form action="booking_db.php" method="POST" onsubmit="return confirm('ยืนยันที่จะสอนรายวิชานี้?\n\nวิชา: <?php echo $row['sub_name']; ?>\nกลุ่ม: <?php echo $row['cla_name']; ?>');">
+                                        <input type="hidden" name="pls_id" value="<?php echo $row['pls_id']; ?>">
+                                        <button type="submit" class="w-full bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white px-4 py-2 rounded-lg shadow-md hover:shadow-lg transition transform hover:-translate-y-0.5 text-xs font-bold flex items-center justify-center gap-2">
+                                            <i class="fa-solid fa-check-circle"></i> เลือกสอน
+                                        </button>
+                                    </form>
+                                <?php else: ?>
+                                    <button disabled class="w-full bg-slate-100 text-slate-400 px-4 py-2 rounded-lg border border-slate-200 cursor-not-allowed text-xs font-bold flex items-center justify-center gap-2">
+                                        <i class="fa-solid fa-lock"></i> ปิดรับ
                                     </button>
-                                </form>
+                                <?php endif; ?>
                             </td>
                         </tr>
                         <?php endforeach; ?>

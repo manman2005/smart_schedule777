@@ -1,4 +1,5 @@
 <?php
+// htdocs/teacher/index.php
 require_once '../config/db.php';
 require_once '../includes/auth.php';
 checkTeacher();
@@ -8,6 +9,21 @@ $stmt = $pdo->prepare("SELECT * FROM teachers WHERE tea_id = ?");
 $stmt->execute([$tea_id]);
 $teacher = $stmt->fetch();
 $profile_pic = $teacher['tea_img'] ?? null;
+
+// --- [NEW] ดึงค่าสถานะระบบ (เปิด/ปิด) มาเช็คก่อนแสดงผล ---
+try {
+    $stmt_sys = $pdo->query("SELECT setting_key, setting_value FROM system_settings");
+    $settings = $stmt_sys->fetchAll(PDO::FETCH_KEY_PAIR);
+    
+    // ถ้าหาไม่เจอ ให้ค่าเริ่มต้นเป็น 1 (เปิด) หรือ 0 (ปิด) ตามที่คุณต้องการ
+    $booking_status = $settings['teacher_booking'] ?? '1'; 
+    $unavail_status = $settings['teacher_unavailability'] ?? '1';
+} catch (Exception $e) {
+    // กรณี Database Error หรือยังไม่สร้างตาราง
+    $booking_status = '0';
+    $unavail_status = '0';
+}
+// -----------------------------------------------------
 
 require_once '../includes/header.php';
 ?>
@@ -67,15 +83,33 @@ require_once '../includes/header.php';
             </div>
         </a>
 
-        <a href="booking.php" class="card-premium p-8 flex items-start gap-6 group cursor-pointer border-l-4 border-l-cvc-gold">
-            <div class="w-16 h-16 rounded-2xl bg-yellow-50 text-cvc-gold flex items-center justify-center text-3xl shadow-inner group-hover:bg-cvc-gold group-hover:text-white transition duration-300">
-                <i class="fa-solid fa-hand-pointer"></i>
-            </div>
-            <div>
-                <h3 class="text-xl font-bold text-slate-800 mb-2 group-hover:text-cvc-gold transition font-serif">จองรายวิชาสอน</h3>
-                <p class="text-sm text-slate-500 font-light leading-relaxed">เลือกรายวิชาที่เปิดให้สอนตามแผนการเรียนเพื่อลงทะเบียนสอน</p>
-            </div>
-        </a>
+        <?php if ($booking_status == '1'): ?>
+            <a href="booking.php" class="card-premium p-8 flex items-start gap-6 group cursor-pointer border-l-4 border-l-cvc-gold relative overflow-hidden">
+                <div class="absolute top-3 right-3 flex items-center gap-1 bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded text-[10px] font-bold border border-emerald-200">
+                    <div class="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></div> เปิดให้จอง
+                </div>
+                <div class="w-16 h-16 rounded-2xl bg-yellow-50 text-cvc-gold flex items-center justify-center text-3xl shadow-inner group-hover:bg-cvc-gold group-hover:text-white transition duration-300">
+                    <i class="fa-solid fa-hand-pointer"></i>
+                </div>
+                <div>
+                    <h3 class="text-xl font-bold text-slate-800 mb-2 group-hover:text-cvc-gold transition font-serif">จองรายวิชาสอน</h3>
+                    <p class="text-sm text-slate-500 font-light leading-relaxed">เลือกรายวิชาที่เปิดให้สอนตามแผนการเรียนเพื่อลงทะเบียนสอน</p>
+                </div>
+            </a>
+        <?php else: ?>
+            <a href="booking.php" class="card-premium p-8 flex items-start gap-6 group cursor-pointer border-l-4 border-l-slate-300 bg-slate-50 relative overflow-hidden opacity-90 grayscale">
+                <div class="absolute top-3 right-3 flex items-center gap-1 bg-red-100 text-red-700 px-2 py-0.5 rounded text-[10px] font-bold border border-red-200">
+                    <i class="fa-solid fa-lock text-[10px]"></i> ปิดระบบ
+                </div>
+                <div class="w-16 h-16 rounded-2xl bg-slate-200 text-slate-400 flex items-center justify-center text-3xl shadow-inner">
+                    <i class="fa-solid fa-hand-pointer"></i>
+                </div>
+                <div>
+                    <h3 class="text-xl font-bold text-slate-500 mb-2 font-serif">จองรายวิชาสอน</h3>
+                    <p class="text-sm text-slate-400 font-light leading-relaxed">ขณะนี้ระบบปิดการจองรายวิชา กรุณาติดต่อเจ้าหน้าที่</p>
+                </div>
+            </a>
+        <?php endif; ?>
 
         <a href="student_schedule.php" class="card-premium p-8 flex items-start gap-6 group cursor-pointer border-l-4 border-l-sky-500">
             <div class="w-16 h-16 rounded-2xl bg-sky-50 text-sky-600 flex items-center justify-center text-3xl shadow-inner group-hover:bg-sky-500 group-hover:text-white transition duration-300">
@@ -86,6 +120,34 @@ require_once '../includes/header.php';
                 <p class="text-sm text-slate-500 font-light leading-relaxed">ดูตารางเรียนของกลุ่มเรียนต่างๆ ในฐานะครูที่ปรึกษา</p>
             </div>
         </a>
+
+        <?php if ($unavail_status == '1'): ?>
+            <a href="unavailability.php" class="card-premium p-8 flex items-start gap-6 group cursor-pointer border-l-4 border-l-red-500 relative overflow-hidden">
+                <div class="absolute top-3 right-3 flex items-center gap-1 bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded text-[10px] font-bold border border-emerald-200">
+                    <div class="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></div> เปิดใช้งาน
+                </div>
+                <div class="w-16 h-16 rounded-2xl bg-red-50 text-red-500 flex items-center justify-center text-3xl shadow-inner group-hover:bg-red-500 group-hover:text-white transition duration-300">
+                    <i class="fa-solid fa-user-clock"></i>
+                </div>
+                <div>
+                    <h3 class="text-xl font-bold text-slate-800 mb-2 group-hover:text-red-500 transition font-serif">ระบุเวลาที่ไม่สะดวก</h3>
+                    <p class="text-sm text-slate-500 font-light leading-relaxed">กำหนดวันและคาบเรียนที่คุณติดภารกิจหรือไม่สามารถทำการสอนได้</p>
+                </div>
+            </a>
+        <?php else: ?>
+            <a href="unavailability.php" class="card-premium p-8 flex items-start gap-6 group cursor-pointer border-l-4 border-l-slate-300 bg-slate-50 relative overflow-hidden opacity-90 grayscale">
+                <div class="absolute top-3 right-3 flex items-center gap-1 bg-red-100 text-red-700 px-2 py-0.5 rounded text-[10px] font-bold border border-red-200">
+                     <i class="fa-solid fa-lock text-[10px]"></i> ปิดระบบ
+                </div>
+                <div class="w-16 h-16 rounded-2xl bg-slate-200 text-slate-400 flex items-center justify-center text-3xl shadow-inner">
+                    <i class="fa-solid fa-user-clock"></i>
+                </div>
+                <div>
+                    <h3 class="text-xl font-bold text-slate-500 mb-2 font-serif">ระบุเวลาที่ไม่สะดวก</h3>
+                    <p class="text-sm text-slate-400 font-light leading-relaxed">ระบบปิดการแก้ไขข้อมูลวันเวลาที่ไม่สะดวกแล้ว</p>
+                </div>
+            </a>
+        <?php endif; ?>
 
     </div>
 </div>

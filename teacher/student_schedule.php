@@ -53,7 +53,7 @@ if ($selected_cla_id) {
     $class_info = $stmt_class->fetch();
     
     if ($class_info) {
-        $stu_level = $current_year_real - $class_info['cla_year'] + 1;
+        $stu_level = max(1, $current_year_real - $class_info['cla_year'] + 1);
         $room_no = intval($class_info['cla_group_no']);
         $class_name_full = "{$class_info['maj_name']} {$class_info['cla_name']}.{$stu_level}/{$room_no}";
         if ($class_info['advisor_name']) $advisor_name = $class_info['advisor_name'];
@@ -202,7 +202,7 @@ if ($selected_cla_id) {
                 <select name="cla_id" class="w-full bg-slate-50 border border-slate-200 rounded-lg py-2.5 px-3 text-sm focus:ring-2 focus:ring-cvc-blue outline-none font-bold text-cvc-blue">
                     <option value="">-- เลือกกลุ่มเรียน --</option>
                     <?php foreach ($class_groups as $g): 
-                        $stu_year = $current_year_real - $g['cla_year'] + 1;
+                        $stu_year = max(1, $current_year_real - $g['cla_year'] + 1);
                         $room_no = intval($g['cla_group_no']);
                         $display_name = $g['cla_name'] . $stu_year . '/' . $room_no;
                     ?>
@@ -342,10 +342,7 @@ if ($selected_cla_id) {
                                     $info = $schedule_data[$d][$t_id]['info']; 
                                     $hours = $schedule_data[$d][$t_id]['hours']; 
                                     
-                                    $current_year_real = date('Y') + 543;
-                                    $stu_lev = $current_year_real - $info['cla_year'] + 1;
-                                    $r_no = intval($info['cla_group_no']);
-                                    $cls_txt = "{$info['cla_name']}.{$stu_lev}/{$r_no}";
+                                    // ลบส่วนที่ error ออกแล้ว
 
                                     echo "<td class='schedule-cell' colspan='{$hours}'>";
                                     echo "<div class='flex flex-col h-full justify-center items-center gap-0.5 w-full'>";
