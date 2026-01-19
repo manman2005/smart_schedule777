@@ -1,4 +1,6 @@
 <?php
+// teacher/my_schedule.php
+// เวอร์ชัน: Responsive Scrollable + Print Friendly
 require_once '../config/db.php';
 require_once '../includes/auth.php';
 checkTeacher();
@@ -24,8 +26,8 @@ $selected_semester = $_GET['semester'] ?? $default_semester;
 $time_slots = $pdo->query("SELECT * FROM time_slots ORDER BY tim_start ASC")->fetchAll();
 
 $schedule_data = [];
-// Query เลือกข้อมูล (sch.* จะมี roo_id อยู่แล้ว)
-$sql = "SELECT sch.*, s.sub_code, s.sub_name, r.roo_name, c.cla_name, c.cla_year, c.cla_group_no
+// Query เลือกข้อมูล
+$sql = "SELECT sch.*, s.sub_code, s.sub_name, r.roo_name, r.roo_id, c.cla_name, c.cla_year, c.cla_group_no
         FROM schedule sch
         JOIN subjects s ON sch.sub_id = s.sub_id
         JOIN rooms r ON sch.roo_id = r.roo_id
@@ -48,6 +50,7 @@ foreach ($rows as $row) {
 <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;600;700&display=swap" rel="stylesheet">
 
 <style>
+    /* CSS สำหรับการพิมพ์ */
     @media print { 
         @page { size: A4 landscape; margin: 5mm; } 
         body * { visibility: hidden; } 
@@ -55,13 +58,17 @@ foreach ($rows as $row) {
         #schedule-area { position: absolute; left: 0; top: 0; width: 100%; border: none !important; box-shadow: none !important; padding: 0 !important; } 
         .no-print { display: none !important; } 
         * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+        
+        /* รีเซ็ตความกว้างตอนพิมพ์ */
+        .min-w-\[1000px\] { min-width: 0 !important; width: 100% !important; }
+        .overflow-x-auto { overflow: visible !important; }
     }
 
     #schedule-area {
         font-family: 'Sarabun', sans-serif !important; 
         background-color: #ffffff;
         color: #000000;
-        width: 100%;
+        /* ไม่ fix width ที่นี่ แต่ใช้ min-width ใน div wrapper หรือ class แทน */
         line-height: 1.2;
         padding-bottom: 2px;
     }
@@ -141,75 +148,78 @@ foreach ($rows as $row) {
         </div>
     </div>
 
-    <div id="schedule-area" class="bg-white p-6 shadow-xl border border-slate-200 min-h-[600px]">
-        <div class="flex items-center justify-between mb-6 border-b border-black pb-4">
-            <div class="flex items-center gap-4">
-                <img src="/images/cvc_logo.png" class="w-16 h-16 object-contain">
-                <div>
-                    <h2 class="text-xl font-bold text-black">วิทยาลัยอาชีวศึกษาเชียงราย</h2>
-                    <h3 class="text-lg font-bold text-black">ตารางสอน: <?php echo $tea_name; ?></h3>
-                    <p class="text-sm text-black">ภาคเรียนที่ <?php echo $selected_semester; ?> ปีการศึกษา <?php echo $selected_year; ?></p>
+    <div class="overflow-x-auto w-full pb-4">
+        
+        <div id="schedule-area" class="bg-white p-6 shadow-xl border border-slate-200 min-h-[600px] min-w-[1000px]">
+            <div class="flex items-center justify-between mb-6 border-b border-black pb-4">
+                <div class="flex items-center gap-4">
+                    <img src="/images/cvc_logo.png" class="w-16 h-16 object-contain">
+                    <div>
+                        <h2 class="text-xl font-bold text-black">วิทยาลัยอาชีวศึกษาเชียงราย</h2>
+                        <h3 class="text-lg font-bold text-black">ตารางสอน: <?php echo $tea_name; ?></h3>
+                        <p class="text-sm text-black">ภาคเรียนที่ <?php echo $selected_semester; ?> ปีการศึกษา <?php echo $selected_year; ?></p>
+                    </div>
                 </div>
             </div>
-        </div>
 
-        <div class="w-full">
-            <table class="schedule-grid text-[10px] table-fixed w-full">
-                <thead>
-                    <tr>
-                        <th class="p-1 w-[90px] bg-slate-800 text-white font-bold text-center align-middle">วัน</th>
-                        <?php $counter = 1; foreach ($time_slots as $slot): 
-                            if (strpos($slot['tim_range'], '12:00') === 0): ?>
-                            <th class="p-1 w-[40px] bg-slate-200 text-black text-center align-middle"><div class="writing-vertical mx-auto font-bold tracking-widest text-[9px]">พัก</div></th>
-                        <?php else: ?>
-                            <th class="p-1 bg-slate-100 text-black align-middle border border-black">
-                                <div class="font-bold text-xs text-indigo-800 mb-0.5">คาบที่ <?php echo $counter++; ?></div>
-                                <div class="text-[9px] text-black font-mono inline-block px-1"><?php echo str_replace(':', '.', substr($slot['tim_range'], 0, 11)); ?></div>
-                            </th>
-                        <?php endif; endforeach; ?>
-                    </tr>
-                </thead>
-                <tbody>
-                    <?php 
-                    $days_th = [1=>'จันทร์', 2=>'อังคาร', 3=>'พุธ', 4=>'พฤหัสบดี', 5=>'ศุกร์'];
-                    for ($d = 1; $d <= 5; $d++): 
-                    ?>
-                    <tr>
-                        <td class="day-header"><?php echo $days_th[$d]; ?></td>
-                        <?php $skip_slots = 0; foreach ($time_slots as $slot): 
-                            if ($skip_slots > 0) { $skip_slots--; continue; } 
-                            $t_id = $slot['tim_id'];
-                            if (strpos($slot['tim_range'], '12:00') === 0) { echo '<td class="bg-slate-200 text-black text-center align-middle"><div class="writing-vertical mx-auto text-[10px] font-bold">พักกลางวัน</div></td>'; continue; }
-                            
-                            if (isset($schedule_data[$d][$t_id])) {
-                                $info = $schedule_data[$d][$t_id]['info']; 
-                                $hours = $schedule_data[$d][$t_id]['hours']; 
+            <div class="w-full">
+                <table class="schedule-grid text-[10px] table-fixed w-full">
+                    <thead>
+                        <tr>
+                            <th class="p-1 w-[90px] bg-slate-800 text-white font-bold text-center align-middle">วัน</th>
+                            <?php $counter = 1; foreach ($time_slots as $slot): 
+                                if (strpos($slot['tim_range'], '12:00') === 0): ?>
+                                <th class="p-1 w-[40px] bg-slate-200 text-black text-center align-middle"><div class="writing-vertical mx-auto font-bold tracking-widest text-[9px]">พัก</div></th>
+                            <?php else: ?>
+                                <th class="p-1 bg-slate-100 text-black align-middle border border-black">
+                                    <div class="font-bold text-xs text-indigo-800 mb-0.5">คาบที่ <?php echo $counter++; ?></div>
+                                    <div class="text-[9px] text-black font-mono inline-block px-1"><?php echo str_replace(':', '.', substr($slot['tim_range'], 0, 11)); ?></div>
+                                </th>
+                            <?php endif; endforeach; ?>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php 
+                        $days_th = [1=>'จันทร์', 2=>'อังคาร', 3=>'พุธ', 4=>'พฤหัสบดี', 5=>'ศุกร์'];
+                        for ($d = 1; $d <= 5; $d++): 
+                        ?>
+                        <tr>
+                            <td class="day-header"><?php echo $days_th[$d]; ?></td>
+                            <?php $skip_slots = 0; foreach ($time_slots as $slot): 
+                                if ($skip_slots > 0) { $skip_slots--; continue; } 
+                                $t_id = $slot['tim_id'];
+                                if (strpos($slot['tim_range'], '12:00') === 0) { echo '<td class="bg-slate-200 text-black text-center align-middle"><div class="writing-vertical mx-auto text-[10px] font-bold">พักกลางวัน</div></td>'; continue; }
                                 
-                                $current_year_real = date('Y') + 543;
-                                $stu_lev = $current_year_real - $info['cla_year'] + 1;
-                                $r_no = intval($info['cla_group_no']);
-                                $cls_txt = "{$info['cla_name']}.{$stu_lev}/{$r_no}";
+                                if (isset($schedule_data[$d][$t_id])) {
+                                    $info = $schedule_data[$d][$t_id]['info']; 
+                                    $hours = $schedule_data[$d][$t_id]['hours']; 
+                                    
+                                    $current_year_real = date('Y') + 543;
+                                    $stu_lev = $current_year_real - $info['cla_year'] + 1;
+                                    $r_no = intval($info['cla_group_no']);
+                                    $cls_txt = "{$info['cla_name']}.{$stu_lev}/{$r_no}";
 
-                                echo "<td class='schedule-cell' colspan='{$hours}'>";
-                                echo "<div class='flex flex-col h-full justify-center items-center gap-0.5 w-full'>";
-                                
-                                // 1. รหัสวิชา
-                                echo "<span class='schedule-text-code'>{$info['sub_code']}</span>"; 
-                                // 2. รหัสห้อง (roo_id)
-                                echo "<span class='schedule-text-room'>{$info['roo_id']}</span>"; 
-                                // 3. ชื่อกลุ่มเรียนที่สอน
-                                echo "<span class='schedule-text-class'>{$cls_txt}</span>";
-                                
-                                echo "</div></td>";
-                                $skip_slots = $hours - 1;
-                            } else { 
-                                echo '<td class="bg-white"></td>'; 
-                            }
-                        endforeach; ?>
-                    </tr>
-                    <?php endfor; ?>
-                </tbody>
-            </table>
+                                    echo "<td class='schedule-cell' colspan='{$hours}'>";
+                                    echo "<div class='flex flex-col h-full justify-center items-center gap-0.5 w-full'>";
+                                    
+                                    // 1. รหัสวิชา
+                                    echo "<span class='schedule-text-code'>{$info['sub_code']}</span>"; 
+                                    // 2. รหัสห้อง (roo_id)
+                                    echo "<span class='schedule-text-room'>{$info['roo_id']}</span>"; 
+                                    // 3. ชื่อกลุ่มเรียนที่สอน
+                                    echo "<span class='schedule-text-class'>{$cls_txt}</span>";
+                                    
+                                    echo "</div></td>";
+                                    $skip_slots = $hours - 1;
+                                } else { 
+                                    echo '<td class="bg-white"></td>'; 
+                                }
+                            endforeach; ?>
+                        </tr>
+                        <?php endfor; ?>
+                    </tbody>
+                </table>
+            </div>
         </div>
     </div>
     
@@ -217,8 +227,22 @@ foreach ($rows as $row) {
         function exportPDF() {
             var element = document.getElementById('schedule-area');
             var filename = 'ตารางสอน_<?php echo $tea_name; ?>.pdf';
-            var opt = { margin: [5, 5, 5, 5], filename: filename, image: { type: 'jpeg', quality: 1 }, html2canvas: { scale: 2, useCORS: true }, jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' } };
-            html2pdf().set(opt).from(element).save();
+            var opt = { 
+                margin: [5, 5, 5, 5], 
+                filename: filename, 
+                image: { type: 'jpeg', quality: 1 }, 
+                html2canvas: { 
+                    scale: 2, 
+                    useCORS: true,
+                    scrollY: 0,
+                    windowWidth: 1200 // ป้องกันตัดหน้า
+                }, 
+                jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' } 
+            };
+            
+            document.fonts.ready.then(() => {
+                html2pdf().set(opt).from(element).save();
+            });
         }
     </script>
 </div>

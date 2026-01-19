@@ -1,15 +1,14 @@
 <?php
+// teacher/student_schedule.php
+// เวอร์ชัน: Responsive Scroll + New Layout (เหมือน Admin)
 require_once '../config/db.php';
 require_once '../includes/auth.php';
 checkTeacher();
 
 // --- [FIX ERROR] แก้ปัญหา MAX_JOIN_SIZE บน Hosting ---
-// สั่งให้ Server อนุญาตการ Query ที่มีการ Join ตารางเยอะๆ ได้
 try {
     $pdo->exec("SET SQL_BIG_SELECTS=1");
-} catch (Exception $e) {
-    // เผื่อกรณีคำสั่งนี้ถูกบล็อก (แต่ส่วนใหญ่จะใช้ได้)
-}
+} catch (Exception $e) {}
 // -----------------------------------------------------
 
 // ดึงรายชื่อกลุ่มเรียนทั้งหมด
@@ -56,7 +55,6 @@ if ($selected_cla_id) {
     if ($class_info) {
         $stu_level = $current_year_real - $class_info['cla_year'] + 1;
         $room_no = intval($class_info['cla_group_no']);
-        // สร้างชื่อเต็ม: เทคโนโลยีคอมพิวเตอร์ สทค.1/1
         $class_name_full = "{$class_info['maj_name']} {$class_info['cla_name']}.{$stu_level}/{$room_no}";
         if ($class_info['advisor_name']) $advisor_name = $class_info['advisor_name'];
     }
@@ -118,13 +116,17 @@ if ($selected_cla_id) {
         #schedule-area { position: absolute; left: 0; top: 0; width: 100%; border: none !important; box-shadow: none !important; padding: 0 !important; } 
         .no-print { display: none !important; } 
         * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+        
+        /* Reset min-width for print */
+        .min-w-\[1000px\] { min-width: 0 !important; width: 100% !important; }
+        .overflow-x-auto { overflow: visible !important; }
     }
     
     #schedule-area {
         font-family: 'Sarabun', sans-serif !important; 
         background-color: #ffffff;
         color: #000000;
-        width: 100%;
+        /* ไม่ Fix width ที่นี่ แต่จะใช้ min-width ใน wrapper แทน */
         line-height: 1.2;
         padding-bottom: 2px;
     }
@@ -220,147 +222,156 @@ if ($selected_cla_id) {
     </div>
 
     <?php if ($selected_cla_id && $class_info): ?>
-    <div id="schedule-area" class="bg-white p-6 shadow-xl border border-slate-200 min-h-[600px]">
+    
+    <div class="overflow-x-auto w-full pb-4">
         
-        <div class="flex flex-row gap-4 mb-2 items-start">
+        <div id="schedule-area" class="bg-white p-6 shadow-xl border border-slate-200 min-h-[600px] min-w-[1000px]">
             
-            <div class="w-[45%] flex flex-col gap-2">
-                <div class="flex items-center gap-3 border-b-2 border-black pb-2 mb-2">
-                    <img src="/images/cvc_logo.png" class="w-16 h-16 object-contain">
-                    <div>
-                        <h2 class="text-xl font-bold text-black leading-tight">วิทยาลัยอาชีวศึกษาเชียงราย</h2>
-                        <p class="text-sm text-black">งานพัฒนาหลักสูตรการเรียนการสอน</p>
+            <div class="flex flex-row gap-4 mb-2 items-start pt-2">
+                
+                <div class="w-[45%] flex flex-col gap-2">
+                    <div class="flex items-center gap-3 border-b-2 border-black pb-2 mb-2">
+                        <img src="/images/cvc_logo.png" class="w-16 h-16 object-contain">
+                        <div>
+                            <h2 class="text-xl font-bold text-black leading-tight">วิทยาลัยอาชีวศึกษาเชียงราย</h2>
+                            <p class="text-sm text-black">งานพัฒนาหลักสูตรการเรียนการสอน</p>
+                        </div>
+                    </div>
+                    
+                    <div class="text-sm space-y-1 pl-2">
+                        <div class="grid grid-cols-10">
+                            <span class="font-bold text-black col-span-3">ภาคเรียน</span>
+                            <span class="text-black col-span-7">: <?php echo "$selected_semester / $selected_year"; ?></span>
+                        </div>
+                        <div class="grid grid-cols-10">
+                            <span class="font-bold text-black col-span-3">ครูที่ปรึกษา</span>
+                            <span class="text-black col-span-7 font-bold">: <?php echo $advisor_name; ?></span>
+                        </div>
+                        <div class="grid grid-cols-10">
+                            <span class="font-bold text-black col-span-3">รหัสกลุ่มเรียน</span>
+                            <span class="text-black col-span-7">: <?php echo $selected_cla_id; ?></span>
+                        </div>
+                        <div class="grid grid-cols-10">
+                            <span class="font-bold text-black col-span-3">ชื่อกลุ่มเรียน</span>
+                            <span class="text-black col-span-7 font-bold">: <?php echo $class_name_full; ?></span>
+                        </div>
                     </div>
                 </div>
-                
-                <div class="text-sm space-y-1 pl-2">
-                    <div class="grid grid-cols-10">
-                        <span class="font-bold text-black col-span-3">ภาคเรียน</span>
-                        <span class="text-black col-span-7">: <?php echo "$selected_semester / $selected_year"; ?></span>
-                    </div>
-                    <div class="grid grid-cols-10">
-                        <span class="font-bold text-black col-span-3">ครูที่ปรึกษา</span>
-                        <span class="text-black col-span-7 font-bold">: <?php echo $advisor_name; ?></span>
-                    </div>
-                    <div class="grid grid-cols-10">
-                        <span class="font-bold text-black col-span-3">รหัสกลุ่มเรียน</span>
-                        <span class="text-black col-span-7">: <?php echo $selected_cla_id; ?></span>
-                    </div>
-                    <div class="grid grid-cols-10">
-                        <span class="font-bold text-black col-span-3">ชื่อกลุ่มเรียน</span>
-                        <span class="text-black col-span-7 font-bold">: <?php echo $class_name_full; ?></span>
-                    </div>
+
+                <div class="w-[55%]">
+                    <table class="summary-table">
+                        <thead>
+                            <tr>
+                                <th class="w-8">ที่</th>
+                                <th class="w-20">รหัสวิชา</th>
+                                <th>ชื่อรายวิชา</th>
+                                <th class="w-6">ท.</th>
+                                <th class="w-6">ป.</th>
+                                <th class="w-6">น.</th>
+                                <th class="w-6">ช.</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php 
+                            $i = 1; $sum_t=0; $sum_p=0; $sum_c=0; $sum_h=0;
+                            if(count($subject_summary) > 0):
+                                foreach($subject_summary as $sub):
+                                    $sum_t += $sub['t']; $sum_p += $sub['p']; $sum_c += $sub['c']; $sum_h += $sub['h'];
+                            ?>
+                            <tr>
+                                <td class="text-center"><?php echo $i++; ?></td>
+                                <td class="text-center font-bold"><?php echo $sub['code']; ?></td>
+                                <td class="truncate max-w-[150px]"><?php echo $sub['name']; ?></td>
+                                <td class="text-center"><?php echo $sub['t']; ?></td>
+                                <td class="text-center"><?php echo $sub['p']; ?></td>
+                                <td class="text-center font-bold"><?php echo $sub['c']; ?></td>
+                                <td class="text-center font-bold"><?php echo $sub['h']; ?></td>
+                            </tr>
+                            <?php endforeach; 
+                            else: ?>
+                            <tr><td colspan="7" class="text-center p-2">- ไม่มีรายวิชา -</td></tr>
+                            <?php endif; ?>
+                        </tbody>
+                        <tfoot>
+                            <tr class="font-bold bg-gray-100">
+                                <td colspan="3" class="text-right pr-2">รวม</td>
+                                <td class="text-center"><?php echo $sum_t; ?></td>
+                                <td class="text-center"><?php echo $sum_p; ?></td>
+                                <td class="text-center"><?php echo $sum_c; ?></td>
+                                <td class="text-center"><?php echo $sum_h; ?></td>
+                            </tr>
+                        </tfoot>
+                    </table>
                 </div>
             </div>
 
-            <div class="w-[55%]">
-                <table class="summary-table">
+            <div class="w-full mt-4">
+                <table class="schedule-grid text-[10px] table-fixed w-full">
                     <thead>
                         <tr>
-                            <th class="w-8">ที่</th>
-                            <th class="w-20">รหัสวิชา</th>
-                            <th>ชื่อรายวิชา</th>
-                            <th class="w-6">ท.</th>
-                            <th class="w-6">ป.</th>
-                            <th class="w-6">น.</th>
-                            <th class="w-6">ช.</th>
+                            <th class="p-1 w-[90px] bg-slate-800 text-white font-bold text-center align-middle">วัน</th>
+                            <?php $counter = 1; foreach ($time_slots as $slot): 
+                                if (strpos($slot['tim_range'], '12:00') === 0): ?>
+                                <th class="p-1 w-[40px] bg-slate-200 text-black text-center align-middle"><div class="writing-vertical mx-auto font-bold tracking-widest text-[9px]">พัก</div></th>
+                            <?php else: ?>
+                                <th class="p-1 bg-slate-100 text-black align-middle border border-black">
+                                    <div class="font-bold text-xs text-indigo-800 mb-0.5">คาบที่ <?php echo $counter++; ?></div>
+                                    <div class="text-[9px] text-black font-mono inline-block px-1"><?php echo str_replace(':', '.', substr($slot['tim_range'], 0, 11)); ?></div>
+                                </th>
+                            <?php endif; endforeach; ?>
                         </tr>
                     </thead>
                     <tbody>
                         <?php 
-                        $i = 1; $sum_t=0; $sum_p=0; $sum_c=0; $sum_h=0;
-                        if(count($subject_summary) > 0):
-                            foreach($subject_summary as $sub):
-                                $sum_t += $sub['t']; $sum_p += $sub['p']; $sum_c += $sub['c']; $sum_h += $sub['h'];
+                        $days_th = [1=>'จันทร์', 2=>'อังคาร', 3=>'พุธ', 4=>'พฤหัสบดี', 5=>'ศุกร์'];
+                        for ($d = 1; $d <= 5; $d++): 
                         ?>
                         <tr>
-                            <td class="text-center"><?php echo $i++; ?></td>
-                            <td class="text-center font-bold"><?php echo $sub['code']; ?></td>
-                            <td class="truncate max-w-[150px]"><?php echo $sub['name']; ?></td>
-                            <td class="text-center"><?php echo $sub['t']; ?></td>
-                            <td class="text-center"><?php echo $sub['p']; ?></td>
-                            <td class="text-center font-bold"><?php echo $sub['c']; ?></td>
-                            <td class="text-center font-bold"><?php echo $sub['h']; ?></td>
+                            <td class="day-header"><?php echo $days_th[$d]; ?></td>
+                            <?php $skip_slots = 0; foreach ($time_slots as $slot): 
+                                if ($skip_slots > 0) { $skip_slots--; continue; } 
+                                $t_id = $slot['tim_id'];
+                                
+                                // พักเที่ยง
+                                if (strpos($slot['tim_range'], '12:00') === 0) { 
+                                    echo '<td class="bg-slate-200 text-black text-center align-middle"><div class="writing-vertical mx-auto text-[10px] font-bold">พักกลางวัน</div></td>'; 
+                                    continue; 
+                                }
+                                
+                                if (isset($schedule_data[$d][$t_id])) {
+                                    $info = $schedule_data[$d][$t_id]['info']; 
+                                    $hours = $schedule_data[$d][$t_id]['hours']; 
+                                    
+                                    $current_year_real = date('Y') + 543;
+                                    $stu_lev = $current_year_real - $info['cla_year'] + 1;
+                                    $r_no = intval($info['cla_group_no']);
+                                    $cls_txt = "{$info['cla_name']}.{$stu_lev}/{$r_no}";
+
+                                    echo "<td class='schedule-cell' colspan='{$hours}'>";
+                                    echo "<div class='flex flex-col h-full justify-center items-center gap-0.5 w-full'>";
+                                    
+                                    // 1. รหัสวิชา
+                                    echo "<span class='text-code'>{$info['sub_code']}</span>"; 
+                                    // 2. รหัสห้อง
+                                    echo "<span class='text-room'>{$info['roo_id']}</span>"; 
+                                    // 3. ครูผู้สอน
+                                    echo "<span class='text-teacher'>" . ($info['tea_fullname'] ?: 'รอครูสอน') . "</span>";
+                                    
+                                    echo "</div></td>";
+                                    $skip_slots = $hours - 1;
+                                } else { 
+                                    echo '<td class="bg-white"></td>'; 
+                                }
+                            endforeach; ?>
                         </tr>
-                        <?php endforeach; 
-                        else: ?>
-                        <tr><td colspan="7" class="text-center p-2">- ไม่มีรายวิชา -</td></tr>
-                        <?php endif; ?>
+                        <?php endfor; ?>
                     </tbody>
-                    <tfoot>
-                        <tr class="font-bold bg-gray-100">
-                            <td colspan="3" class="text-right pr-2">รวม</td>
-                            <td class="text-center"><?php echo $sum_t; ?></td>
-                            <td class="text-center"><?php echo $sum_p; ?></td>
-                            <td class="text-center"><?php echo $sum_c; ?></td>
-                            <td class="text-center"><?php echo $sum_h; ?></td>
-                        </tr>
-                    </tfoot>
                 </table>
             </div>
-        </div>
-
-        <div class="w-full mt-4">
-            <table class="schedule-grid text-[10px] table-fixed w-full">
-                <thead>
-                    <tr>
-                        <th class="p-1 w-[90px] bg-slate-800 text-white font-bold text-center align-middle">วัน</th>
-                        <?php $counter = 1; foreach ($time_slots as $slot): 
-                            if (strpos($slot['tim_range'], '12:00') === 0): ?>
-                            <th class="p-1 w-[40px] bg-slate-200 text-black text-center align-middle"><div class="writing-vertical mx-auto font-bold tracking-widest text-[9px]">พัก</div></th>
-                        <?php else: ?>
-                            <th class="p-1 bg-slate-100 text-black align-middle border border-black">
-                                <div class="font-bold text-xs text-indigo-800 mb-0.5">คาบที่ <?php echo $counter++; ?></div>
-                                <div class="text-[9px] text-black font-mono inline-block px-1"><?php echo str_replace(':', '.', substr($slot['tim_range'], 0, 11)); ?></div>
-                            </th>
-                        <?php endif; endforeach; ?>
-                    </tr>
-                </thead>
-                <tbody>
-                    <?php 
-                    $days_th = [1=>'จันทร์', 2=>'อังคาร', 3=>'พุธ', 4=>'พฤหัสบดี', 5=>'ศุกร์'];
-                    for ($d = 1; $d <= 5; $d++): 
-                    ?>
-                    <tr>
-                        <td class="day-header"><?php echo $days_th[$d]; ?></td>
-                        <?php $skip_slots = 0; foreach ($time_slots as $slot): 
-                            if ($skip_slots > 0) { $skip_slots--; continue; } 
-                            $t_id = $slot['tim_id'];
-                            
-                            // พักเที่ยง
-                            if (strpos($slot['tim_range'], '12:00') === 0) { 
-                                echo '<td class="bg-slate-200 text-black text-center align-middle"><div class="writing-vertical mx-auto text-[10px] font-bold">พักกลางวัน</div></td>'; 
-                                continue; 
-                            }
-                            
-                            if (isset($schedule_data[$d][$t_id])) {
-                                $info = $schedule_data[$d][$t_id]['info']; 
-                                $hours = $schedule_data[$d][$t_id]['hours']; 
-                                
-                                echo "<td class='schedule-cell' colspan='{$hours}'>";
-                                echo "<div class='flex flex-col h-full justify-center items-center gap-0.5 w-full'>";
-                                
-                                // 1. รหัสวิชา
-                                echo "<span class='text-code'>{$info['sub_code']}</span>"; 
-                                // 2. รหัสห้อง
-                                echo "<span class='text-room'>{$info['roo_id']}</span>"; 
-                                // 3. ครูผู้สอน
-                                echo "<span class='text-teacher'>" . ($info['tea_fullname'] ?: 'รอครูสอน') . "</span>";
-                                
-                                echo "</div></td>";
-                                $skip_slots = $hours - 1;
-                            } else { 
-                                echo '<td class="bg-white"></td>'; 
-                            }
-                        endforeach; ?>
-                    </tr>
-                    <?php endfor; ?>
-                </tbody>
-            </table>
-        </div>
-        
-        <div class="mt-4 text-center text-xs text-black no-print">
-            เอกสารนี้จัดทำโดยระบบสารสนเทศ วิทยาลัยอาชีวศึกษาเชียงราย (CVC Smart System)
+            
+            <div class="mt-4 text-center text-xs text-black no-print">
+                เอกสารนี้จัดทำโดยระบบสารสนเทศ วิทยาลัยอาชีวศึกษาเชียงราย (CVC Smart System)
+            </div>
         </div>
     </div>
     
@@ -368,7 +379,18 @@ if ($selected_cla_id) {
         function exportPDF() { 
             var element = document.getElementById('schedule-area'); 
             var filename = 'ตารางเรียน_<?php echo $class_info['cla_name']; ?>.pdf'; 
-            var opt = { margin: [5,5,5,5], filename: filename, image: { type: 'jpeg', quality: 1 }, html2canvas: { scale: 2, useCORS: true }, jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' } }; 
+            var opt = { 
+                margin: [5,5,5,5], 
+                filename: filename, 
+                image: { type: 'jpeg', quality: 1 }, 
+                html2canvas: { 
+                    scale: 2, 
+                    useCORS: true,
+                    scrollY: 0,
+                    windowWidth: 1200 // ป้องกันตัดหน้า
+                }, 
+                jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' } 
+            }; 
             html2pdf().set(opt).from(element).save(); 
         }
     </script>

@@ -1,12 +1,12 @@
 <?php
-// --- 1. เปิดแสดง Error ---
+// public_schedule.php
+// แก้ไขล่าสุด: บังคับเลย์เอาต์แนวนอน (Side-by-Side) เหมือนหน้า Admin
 ini_set('display_errors', 1);
 ini_set('display_startup_errors', 1);
 error_reporting(E_ALL);
 
 require_once 'config/db.php';
 
-// ตรวจสอบ DB
 if (!isset($pdo)) {
     die("<div style='color:red; text-align:center; padding:50px;'>Error: Database Connection Failed.</div>");
 }
@@ -25,7 +25,7 @@ if(empty($id) || empty($mode)) {
 }
 
 try {
-    // --- Period Selector Logic (ปรับปรุงใหม่: กรองเทอมตามปี) ---
+    // --- Period Selector Logic ---
     $stmt_periods = $pdo->query("SELECT DISTINCT sch_academic_year, sch_semester FROM schedule ORDER BY sch_academic_year DESC, sch_semester ASC");
     $available_periods = $stmt_periods->fetchAll();
 
@@ -37,30 +37,23 @@ try {
         $default_semester = 1;
     }
 
-    // รับค่าปีที่เลือกมาก่อน
     $selected_year = $_GET['year'] ?? $default_year;
 
-    // หาว่าปีที่เลือก มีเทอมไหนบ้างที่มีข้อมูลใน DB
     $valid_semesters_for_year = [];
     foreach($available_periods as $p) {
         if($p['sch_academic_year'] == $selected_year) {
             $valid_semesters_for_year[] = $p['sch_semester'];
         }
     }
-    // เรียงลำดับเทอม
     sort($valid_semesters_for_year);
-    // ถ้าไม่มีข้อมูลเลย ให้ Default เป็นเทอม 1
     if(empty($valid_semesters_for_year)) $valid_semesters_for_year = [1];
 
-    // ตรวจสอบค่าเทอมที่ส่งมา (GET) ว่ามีอยู่จริงในปีนั้นไหม
     $req_semester = $_GET['semester'] ?? $default_semester;
     if(in_array($req_semester, $valid_semesters_for_year)) {
         $selected_semester = $req_semester;
     } else {
-        // ถ้าเทอมที่ส่งมาไม่มีในปีนั้น (เช่น เปลี่ยนปีแล้วเทอมเดิมไม่มี) ให้ใช้เทอมแรกที่มี
         $selected_semester = $valid_semesters_for_year[0];
     }
-    // --------------------------------------------------------
 
     $time_slots = $pdo->query("SELECT * FROM time_slots ORDER BY tim_start ASC")->fetchAll();
 
@@ -92,8 +85,8 @@ try {
             $head_sub_info = [
                 'ภาคเรียน' => "$selected_semester / $selected_year",
                 'ครูที่ปรึกษา' => $advisor_name,
-                'รหัสกลุ่ม' => $class_info['cla_id'],
-                'กลุ่มเรียน' => $class_name_full
+                'รหัสกลุ่มเรียน' => $class_info['cla_id'],
+                'ชื่อกลุ่มเรียน' => $class_name_full
             ];
         } else {
             $header_title = "ไม่พบข้อมูล";
@@ -266,24 +259,15 @@ try {
         .schedule-text-name { font-size: 11px; font-weight: bold; }
         .schedule-text-info { font-size: 10px; }
 
-        /* Responsive Scroll */
-        .table-responsive-scroll {
-            overflow-x: auto;
-            -webkit-overflow-scrolling: touch;
-            width: 100%;
-        }
-        .table-responsive-scroll table {
-            min-width: 900px;
-        }
-
+        /* Media Print Settings */
         @media print {
             @page { size: A4 landscape; margin: 5mm; }
             body { background: white !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
             .no-print { display: none !important; }
             #schedule-area { box-shadow: none; padding: 0; margin: 0; width: 100%; }
             nav { display: none !important; }
-            .table-responsive-scroll { overflow-x: visible; }
-            .table-responsive-scroll table { min-width: 100%; }
+            .min-w-\[1000px\] { min-width: 0 !important; width: 100% !important; }
+            .overflow-x-auto { overflow: visible !important; }
         }
         
         .card-premium {
@@ -306,7 +290,6 @@ try {
 
     <div class="fixed top-0 left-0 right-0 z-50 flex justify-center pt-5 px-4 no-print">
         <nav class="w-full max-w-[85rem] bg-gradient-to-r from-slate-900 via-blue-900 to-slate-900 backdrop-blur-xl rounded-full shadow-[0_8px_30px_rgb(15,23,42,0.4)] border border-slate-700/50 px-6 py-3 flex justify-between items-center transition-all hover:shadow-[0_15px_40px_rgb(15,23,42,0.5)]">
-            
             <a href="index.php" class="flex items-center gap-4 pl-2 group">
                 <div class="relative z-10 group-hover:scale-110 transition duration-500">
                     <div class="bg-white/10 rounded-full p-2 backdrop-blur-sm"> 
@@ -320,7 +303,6 @@ try {
                     <p class="text-[10px] text-slate-300 font-sans tracking-widest uppercase font-semibold mt-0.5">ChiangRai Vocational College</p>
                 </div>
             </a>
-
             <div class="flex items-center pr-2 gap-3">
                 <a href="index.php" class="text-slate-300 hover:text-white text-sm font-bold transition mr-2 hidden md:block">
                     <i class="fa-solid fa-house mr-1"></i> หน้าแรก
@@ -376,160 +358,165 @@ try {
             </div>
         </div>
 
-        <div id="schedule-area" class="max-w-[297mm] mx-auto min-h-[210mm]">
+        <div class="overflow-x-auto w-full pb-4">
             
-            <div class="flex flex-col md:flex-row gap-4 mb-4 items-start pt-4">
+            <div id="schedule-area" class="max-w-[297mm] mx-auto min-h-[210mm] min-w-[1000px]">
                 
-                <div class="w-full md:w-[45%] flex flex-col gap-4">
-                    <div class="flex items-center gap-4 border-b border-black pb-4">
-                        <img src="/images/cvc_logo.png" class="w-20 h-20 object-contain">
-                        <div>
-                            <h2 class="text-xl font-bold text-black"><?php echo $head_title_1; ?></h2>
-                            <p class="text-sm text-black">งานพัฒนาหลักสูตรการเรียนการสอน</p>
+                <div class="flex flex-row gap-4 mb-4 items-start pt-4">
+                    
+                    <div class="w-[45%] flex flex-col gap-4">
+                        <div class="flex items-center gap-4 border-b border-black pb-4">
+                            <img src="/images/cvc_logo.png" class="w-20 h-20 object-contain">
+                            <div>
+                                <h2 class="text-xl font-bold text-black"><?php echo $head_title_1; ?></h2>
+                                <p class="text-sm text-black">งานพัฒนาหลักสูตรการเรียนการสอน</p>
+                            </div>
+                        </div>
+                        <div class="space-y-2 text-sm p-2">
+                            <?php foreach($head_sub_info as $label => $value): ?>
+                                <div class="grid grid-cols-3">
+                                    <span class="font-bold text-black col-span-1"><?php echo $label; ?></span> 
+                                    <span class="font-bold text-black col-span-2">: <?php echo $value; ?></span>
+                                </div>
+                            <?php endforeach; ?>
                         </div>
                     </div>
-                    <div class="space-y-2 text-sm p-2">
-                        <?php foreach($head_sub_info as $label => $value): ?>
-                            <div class="grid grid-cols-3">
-                                <span class="font-bold text-black col-span-1"><?php echo $label; ?></span> 
-                                <span class="font-bold text-black col-span-2">: <?php echo $value; ?></span>
-                            </div>
-                        <?php endforeach; ?>
+
+                    <div class="w-[55%]">
+                        <table class="summary-table-sm w-full">
+                            <thead>
+                                <tr>
+                                    <th class="w-8">ที่</th>
+                                    <th class="w-20">รหัสวิชา</th>
+                                    <th>ชื่อรายวิชา</th>
+                                    <th class="w-8">ท.</th>
+                                    <th class="w-8">ป.</th>
+                                    <th class="w-8">น.</th>
+                                    <th class="w-10">ช.</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <?php 
+                                $sum_t = 0; $sum_p = 0; $sum_c = 0; $sum_h = 0; $i = 1;
+                                usort($subject_summary, function($a, $b) { return strcmp($a['code'], $b['code']); });
+                                foreach($subject_summary as $sub): 
+                                    $sum_t += $sub['t']; $sum_p += $sub['p']; $sum_c += $sub['c']; $sum_h += $sub['h'];
+                                ?>
+                                <tr>
+                                    <td class="text-center"><?php echo $i++; ?></td>
+                                    <td class="text-center font-bold"><?php echo $sub['code']; ?></td>
+                                    <td class="truncate max-w-[200px]"><?php echo $sub['name']; ?></td>
+                                    <td class="text-center"><?php echo $sub['t']; ?></td>
+                                    <td class="text-center"><?php echo $sub['p']; ?></td>
+                                    <td class="text-center font-bold"><?php echo $sub['c']; ?></td>
+                                    <td class="text-center font-bold"><?php echo $sub['h']; ?></td>
+                                </tr>
+                                <?php endforeach; ?>
+                            </tbody>
+                            <tfoot>
+                                <tr class="font-bold bg-gray-100">
+                                    <td colspan="3" class="text-right pr-2">รวม</td>
+                                    <td class="text-center"><?php echo $sum_t; ?></td>
+                                    <td class="text-center"><?php echo $sum_p; ?></td>
+                                    <td class="text-center"><?php echo $sum_c; ?></td>
+                                    <td class="text-center"><?php echo $sum_h; ?></td>
+                                </tr>
+                            </tfoot>
+                        </table>
                     </div>
                 </div>
 
-                <div class="w-full md:w-[55%]">
-                    <table class="summary-table-sm w-full">
+                <div class="w-full">
+                    <table class="schedule-grid text-[10px] table-fixed w-full">
                         <thead>
                             <tr>
-                                <th class="w-8">ที่</th>
-                                <th class="w-20">รหัสวิชา</th>
-                                <th>ชื่อรายวิชา</th>
-                                <th class="w-8">ท.</th>
-                                <th class="w-8">ป.</th>
-                                <th class="w-8">น.</th>
-                                <th class="w-10">ช.</th>
+                                <th class="p-1 w-[90px] bg-slate-800 text-white font-bold text-center align-middle">วัน</th>
+                                <?php 
+                                $counter = 1; 
+                                foreach ($time_slots as $slot): 
+                                    // ขยายความกว้างช่องพักเที่ยงเป็น 40px
+                                    if (strpos($slot['tim_range'], '12:00') === 0): 
+                                ?>
+                                    <th class="p-1 w-[40px] bg-slate-200 text-black text-center align-middle">
+                                        <div class="writing-vertical mx-auto font-bold tracking-widest text-[9px]">พัก</div>
+                                    </th>
+                                <?php else: ?>
+                                    <th class="p-1 bg-slate-100 text-black align-middle border border-black">
+                                        <div class="font-bold text-xs text-indigo-800 mb-0.5">
+                                            คาบที่ <?php echo $counter++; ?>
+                                        </div>
+                                        <div class="text-[9px] text-black font-mono inline-block px-1">
+                                            <?php echo str_replace(':', '.', substr($slot['tim_range'], 0, 11)); ?>
+                                        </div>
+                                    </th>
+                                <?php endif; endforeach; ?>
                             </tr>
                         </thead>
                         <tbody>
                             <?php 
-                            $sum_t = 0; $sum_p = 0; $sum_c = 0; $sum_h = 0; $i = 1;
-                            usort($subject_summary, function($a, $b) { return strcmp($a['code'], $b['code']); });
-                            foreach($subject_summary as $sub): 
-                                $sum_t += $sub['t']; $sum_p += $sub['p']; $sum_c += $sub['c']; $sum_h += $sub['h'];
+                            $days_th = [1=>'จันทร์', 2=>'อังคาร', 3=>'พุธ', 4=>'พฤหัสบดี', 5=>'ศุกร์'];
+                            for ($d = 1; $d <= 5; $d++): 
                             ?>
                             <tr>
-                                <td class="text-center"><?php echo $i++; ?></td>
-                                <td class="text-center font-bold"><?php echo $sub['code']; ?></td>
-                                <td class="truncate max-w-[200px]"><?php echo $sub['name']; ?></td>
-                                <td class="text-center"><?php echo $sub['t']; ?></td>
-                                <td class="text-center"><?php echo $sub['p']; ?></td>
-                                <td class="text-center font-bold"><?php echo $sub['c']; ?></td>
-                                <td class="text-center font-bold"><?php echo $sub['h']; ?></td>
-                            </tr>
-                            <?php endforeach; ?>
-                        </tbody>
-                        <tfoot>
-                            <tr class="font-bold bg-gray-100">
-                                <td colspan="3" class="text-right pr-2">รวม</td>
-                                <td class="text-center"><?php echo $sum_t; ?></td>
-                                <td class="text-center"><?php echo $sum_p; ?></td>
-                                <td class="text-center"><?php echo $sum_c; ?></td>
-                                <td class="text-center"><?php echo $sum_h; ?></td>
-                            </tr>
-                        </tfoot>
-                    </table>
-                </div>
-            </div>
-
-            <div class="w-full table-responsive-scroll">
-                <table class="schedule-grid text-[10px] table-fixed w-full">
-                    <thead>
-                        <tr>
-                            <th class="p-1 w-[90px] bg-slate-800 text-white font-bold text-center align-middle">วัน</th>
-                            <?php 
-                            $counter = 1; 
-                            foreach ($time_slots as $slot): 
-                                if (strpos($slot['tim_range'], '12:00') === 0): 
-                            ?>
-                                <th class="p-1 w-[40px] bg-slate-200 text-black text-center align-middle">
-                                    <div class="writing-vertical mx-auto font-bold tracking-widest text-[9px]">พัก</div>
-                                </th>
-                            <?php else: ?>
-                                <th class="p-1 bg-slate-100 text-black align-middle border border-black">
-                                    <div class="font-bold text-xs text-indigo-800 mb-0.5">
-                                        คาบที่ <?php echo $counter++; ?>
-                                    </div>
-                                    <div class="text-[9px] text-black font-mono inline-block px-1">
-                                        <?php echo str_replace(':', '.', substr($slot['tim_range'], 0, 11)); ?>
-                                    </div>
-                                </th>
-                            <?php endif; endforeach; ?>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <?php 
-                        $days_th = [1=>'จันทร์', 2=>'อังคาร', 3=>'พุธ', 4=>'พฤหัสบดี', 5=>'ศุกร์'];
-                        for ($d = 1; $d <= 5; $d++): 
-                        ?>
-                        <tr>
-                            <td class="day-header"><?php echo $days_th[$d]; ?></td>
-                            
-                            <?php $skip_slots = 0; foreach ($time_slots as $slot): 
-                                if ($skip_slots > 0) { $skip_slots--; continue; } 
-                                $t_id = $slot['tim_id'];
+                                <td class="day-header"><?php echo $days_th[$d]; ?></td>
                                 
-                                if (strpos($slot['tim_range'], '12:00') === 0) { 
-                                    echo '<td class="bg-slate-50 text-black text-center align-middle">';
-                                    echo '<div class="writing-vertical mx-auto text-[10px] font-bold">พักกลางวัน</div>';
-                                    echo '</td>'; 
-                                    continue; 
-                                }
-                                
-                                if (isset($schedule_data[$d][$t_id])) {
-                                    $info = $schedule_data[$d][$t_id]['info']; 
-                                    $hours = $schedule_data[$d][$t_id]['hours']; 
+                                <?php $skip_slots = 0; foreach ($time_slots as $slot): 
+                                    if ($skip_slots > 0) { $skip_slots--; continue; } 
+                                    $t_id = $slot['tim_id'];
                                     
-                                    $current_year_real = date('Y') + 543;
-                                    $stu_lev = max(1, $current_year_real - ($info['cla_year'] ?? $current_year_real) + 1);
-                                    $r_no = intval($info['cla_group_no'] ?? 0);
-                                    $cls_txt = ($info['cla_name'] ?? '') . ".{$stu_lev}/{$r_no}";
-
-                                    // --- ส่วนตัดคำนำหน้าชื่อครู ---
-                                    $display_name = $info['tea_fullname'];
-                                    if ($mode !== 'teacher') {
-                                        $display_name = preg_replace('/^(นาย|นางสาว|นาง|ว่าที่ร้อยตรี|ว่าที่ร\.ต\.|ดร\.|ผศ\.|รศ\.|ศ\.|อ\.|อาจารย์)\s*/u', '', $display_name);
+                                    // ใส่ข้อความ พักกลางวัน ทุกช่องที่เป็นเวลา 12:00
+                                    if (strpos($slot['tim_range'], '12:00') === 0) { 
+                                        echo '<td class="bg-slate-50 text-black text-center align-middle">';
+                                        echo '<div class="writing-vertical mx-auto text-[10px] font-bold">พักกลางวัน</div>';
+                                        echo '</td>'; 
+                                        continue; 
                                     }
+                                    
+                                    if (isset($schedule_data[$d][$t_id])) {
+                                        $info = $schedule_data[$d][$t_id]['info']; 
+                                        $hours = $schedule_data[$d][$t_id]['hours']; 
+                                        
+                                        $current_year_real = date('Y') + 543;
+                                        $stu_lev = max(1, $current_year_real - ($info['cla_year'] ?? $current_year_real) + 1);
+                                        $r_no = intval($info['cla_group_no'] ?? 0);
+                                        $cls_txt = ($info['cla_name'] ?? '') . ".{$stu_lev}/{$r_no}";
 
-                                    echo "<td class='schedule-cell p-1 align-top h-16 overflow-hidden' colspan='{$hours}'>";
-                                    echo "<div class='flex flex-col h-full justify-center items-center gap-0.5 w-full'>";
-                                    
-                                    echo "<span class='schedule-text-code'>{$info['sub_code']}</span>"; 
-                                    
-                                    if ($mode == 'room') {
-                                        echo "<span class='schedule-text-info'>{$display_name}</span>";
-                                        echo "<span class='schedule-text-info font-bold'>{$cls_txt}</span>";
-                                    } else {
-                                        echo "<span class='schedule-text-info'>{$info['roo_id']}</span>";
-                                        if ($mode == 'teacher') {
+                                        // --- ส่วนตัดคำนำหน้าชื่อครู ---
+                                        $display_name = $info['tea_fullname'];
+                                        if ($mode !== 'teacher') {
+                                            $display_name = preg_replace('/^(นาย|นางสาว|นาง|ว่าที่ร้อยตรี|ว่าที่ร\.ต\.|ดร\.|ผศ\.|รศ\.|ศ\.|อ\.|อาจารย์)\s*/u', '', $display_name);
+                                        }
+
+                                        echo "<td class='schedule-cell p-1 align-top h-16 overflow-hidden' colspan='{$hours}'>";
+                                        echo "<div class='flex flex-col h-full justify-center items-center gap-0.5 w-full'>";
+                                        
+                                        echo "<span class='schedule-text-code'>{$info['sub_code']}</span>"; 
+                                        
+                                        if ($mode == 'room') {
+                                            echo "<span class='schedule-text-info'>{$display_name}</span>";
                                             echo "<span class='schedule-text-info font-bold'>{$cls_txt}</span>";
                                         } else {
-                                            echo "<span class='schedule-text-info'>{$display_name}</span>"; 
+                                            echo "<span class='schedule-text-info'>{$info['roo_id']}</span>";
+                                            if ($mode == 'teacher') {
+                                                echo "<span class='schedule-text-info font-bold'>{$cls_txt}</span>";
+                                            } else {
+                                                echo "<span class='schedule-text-info'>{$display_name}</span>"; 
+                                            }
                                         }
+                                        echo "</div></td>";
+                                        $skip_slots = $hours - 1;
+                                    } else { 
+                                        echo '<td class="bg-white"></td>'; 
                                     }
-                                    echo "</div></td>";
-                                    $skip_slots = $hours - 1;
-                                } else { 
-                                    echo '<td class="bg-white"></td>'; 
-                                }
-                            endforeach; ?>
-                        </tr>
-                        <?php endfor; ?>
-                    </tbody>
-                </table>
-                
-                <div class="mt-4 text-center text-[10px] text-slate-400 no-print">
-                    เอกสารนี้จัดทำโดยระบบสารสนเทศ วิทยาลัยอาชีวศึกษาเชียงราย (CVC Smart System) | ข้อมูล ณ วันที่ <?php echo date("d/m/Y H:i"); ?>
+                                endforeach; ?>
+                            </tr>
+                            <?php endfor; ?>
+                        </tbody>
+                    </table>
+                    
+                    <div class="mt-4 text-center text-[10px] text-slate-400 no-print">
+                        เอกสารนี้จัดทำโดยระบบสารสนเทศ วิทยาลัยอาชีวศึกษาเชียงราย (CVC Smart System) | ข้อมูล ณ วันที่ <?php echo date("d/m/Y H:i"); ?>
+                    </div>
                 </div>
             </div>
         </div>
@@ -548,10 +535,12 @@ try {
                 filename:     filename,
                 image:        { type: 'jpeg', quality: 1.0 }, 
                 html2canvas:  { 
-                    scale: 4,       
+                    scale: 4,        
                     useCORS: true, 
                     letterRendering: true,
-                    scrollY: 0      
+                    scrollY: 0,
+                    // แก้ไข: ป้องกันตัดหน้า
+                    windowWidth: 1200
                 },
                 jsPDF:        { unit: 'mm', format: 'a4', orientation: 'landscape' }
             };
