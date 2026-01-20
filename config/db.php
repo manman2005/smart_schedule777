@@ -1,8 +1,8 @@
 <?php
-$host = 'localhost';
-$dbname = 'schedule';
-$username = 'root'; 
-$password = ''; 
+$host = 'sql211.infinityfree.com';
+$dbname = 'if0_40693934_schedule';
+$username = 'if0_40693934'; 
+$password = 'FABYtPKCRAGLi'; 
 
 try {
     // ใช้ general_ci เพื่อให้ตรงกับฐานข้อมูลที่เราเพิ่งสร้างใหม่
