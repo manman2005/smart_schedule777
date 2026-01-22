@@ -1,6 +1,6 @@
 <?php
 // ไฟล์: htdocs/ai_action.php
-// เวอร์ชัน: ULTIMATE HYBRID (หา Model อัตโนมัติ + เชื่อมต่อแบบถึกทน + จัดรูปแบบตารางเรียน)
+// เวอร์ชัน: ULTIMATE HYBRID (หา Model อัตโนมัติ + เชื่อมต่อแบบถึกทน + จัดรูปแบบตารางเรียน + แจ้งเตือน Quota ภาษาไทย)
 
 // 1. ตั้งค่าระบบให้ทำงานต่อเนื่อง ไม่ตัดจบง่ายๆ
 ignore_user_abort(true); 
@@ -13,7 +13,7 @@ ini_set('display_errors', 0);
 header('Content-Type: application/json; charset=utf-8');
 header('Access-Control-Allow-Origin: *');
 
-// 🔑 API KEY
+// 🔑 API KEY (ใช้คีย์เดิมของคุณ)
 $apiKey = 'AIzaSyBD65NOBcTvE28iIxtUQvuDcBwMKwypIYU'; 
 
 $dataDebug = [];
@@ -33,7 +33,7 @@ if (file_exists($dbPath)) {
     }
 }
 
-// 3. ฟังก์ชันดึงข้อมูล (Schedule Formatting)
+// 3. ฟังก์ชันดึงข้อมูล (Schedule Formatting) - คงไว้เหมือนเดิมเพื่อให้ AI ตอบคำถามตารางเรียนได้
 function getAllContext($conn, &$dataDebug) {
     if (!$conn) return "";
     $context = "";
@@ -126,7 +126,6 @@ $finalPrompt = $systemContext . "คำถาม: " . $userPrompt;
 
 // 🔥 5. ฟังก์ชันหา Model อัตโนมัติ (แก้ปัญหา Model Not Found)
 function getWorkingModelName($apiKey) {
-    // ถาม Google ว่ามีอะไรให้ใช้บ้าง
     $ch = curl_init("https://generativelanguage.googleapis.com/v1beta/models?key=$apiKey");
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
     curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
@@ -140,18 +139,13 @@ function getWorkingModelName($apiKey) {
     if (isset($data['models'])) {
         foreach ($data['models'] as $m) {
             $name = str_replace('models/', '', $m['name']);
-            
-            // เลือกเฉพาะรุ่นที่สร้างข้อความได้ และไม่ใช่ Audio/Vision
             if (isset($m['supportedGenerationMethods']) && in_array('generateContent', $m['supportedGenerationMethods'])) {
                 if (strpos($name, 'audio') === false && 
                     strpos($name, 'vision') === false && 
                     strpos($name, 'embedding') === false) {
-                    
-                    // ถ้าเจอ Flash เอาเลย (เพราะเร็ว)
                     if (strpos($name, 'flash') !== false) {
                         return $name;
                     }
-                    // ถ้าไม่เจอ Flash ก็เก็บชื่อรุ่นอื่นๆ ไว้เป็นตัวสำรอง
                     $bestModel = $name;
                 }
             }
@@ -206,6 +200,7 @@ do {
     
     curl_close($ch);
 
+    // ถ้า HTTP Code OK หรือเป็น Error ที่ไม่ใช่ Quota เต็ม (429) ให้หยุด Loop
     if ($httpCode === 200 || ($httpCode >= 400 && $httpCode != 429 && $httpCode != 503 && $httpCode != 0)) {
         break;
     }
@@ -214,9 +209,19 @@ do {
 
 } while ($attempt < $maxRetries);
 
-// 7. ตอบกลับ
+// 7. ตรวจสอบและตอบกลับ (จุดที่แก้ไข: แจ้งเตือนภาษาไทยเมื่อ Quota เต็ม)
+$json = json_decode($finalResponse, true);
+
+// เช็ค Error 429 (Quota Exceeded) หรือคำว่า quota ในข้อความ Error
+if ($httpCode == 429 || (isset($json['error']) && stripos(($json['error']['message'] ?? ''), 'quota') !== false)) {
+    // ส่งข้อความแจ้งเตือนภาษาไทยที่สุภาพ
+    $friendlyMessage = "⚠️ **ระบบ AI กำลังทำงานหนัก (โควต้าเต็มชั่วคราว)**\n\nตอนนี้มีการใช้งานหนาแน่น กรุณา **รอประมาณ 1 นาที** แล้วกดลองใหม่อีกครั้งครับ";
+    // ส่งเป็น status: success เพื่อให้หน้าเว็บแสดงข้อความนี้ในกล่องแชท
+    echo json_encode(['status' => 'success', 'answer' => $friendlyMessage]); 
+    exit;
+}
+
 if ($httpCode === 200) {
-    $json = json_decode($finalResponse, true);
     $ans = $json['candidates'][0]['content']['parts'][0]['text'] ?? null;
     if ($ans) {
         echo json_encode(['status' => 'success', 'answer' => $ans]);
@@ -224,12 +229,11 @@ if ($httpCode === 200) {
         echo json_encode(['status' => 'error', 'message' => "AI ไม่ตอบกลับ"]);
     }
 } else {
-    // แจ้ง Error ละเอียด
+    // แจ้ง Error อื่นๆ ที่ไม่ใช่ Quota
     if ($httpCode === 0) {
         echo json_encode(['status' => 'error', 'message' => "Connect Failed ($modelName): $curlError"]);
     } else {
-        $err = json_decode($finalResponse, true);
-        $msg = $err['error']['message'] ?? "HTTP $httpCode";
+        $msg = $json['error']['message'] ?? "HTTP $httpCode";
         echo json_encode(['status' => 'error', 'message' => "Error ($modelName): $msg"]);
     }
 }

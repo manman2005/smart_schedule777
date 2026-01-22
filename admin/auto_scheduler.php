@@ -204,7 +204,6 @@ async function checkSystemReadiness() {
     const year = document.getElementById('year').value;
     const semester = document.getElementById('semester').value;
     
-    // แสดงสถานะกำลังโหลด
     Swal.fire({
         title: 'กำลังตรวจสอบ...',
         text: 'ระบบกำลังวิเคราะห์ข้อมูลรายวิชาและทรัพยากร',
@@ -218,16 +217,9 @@ async function checkSystemReadiness() {
         
         if(data.error) throw new Error(data.error);
 
-        // วิเคราะห์ข้อมูล
         const tasks = data.tasks || [];
         const rooms = data.rooms || [];
-        
-        // เช็ควิชาที่ไม่มีครู
         const missingTeachers = tasks.filter(t => !t.tea_id);
-        
-        // เช็ควิชาที่ไม่มีห้องเรียน (ระบุเฉพาะเจาะจงแต่หาห้องไม่เจอ) - *ใน API นี้อาจจะยังไม่ส่งมา แต่เราเช็คเบื้องต้นได้
-        
-        // คำนวณชั่วโมงรวม
         const totalHours = tasks.reduce((sum, t) => sum + (parseInt(t.sub_hours) || 0), 0);
         
         let statusHtml = `
@@ -291,7 +283,6 @@ async function clearSchedule() {
     const year = document.getElementById('year').value; 
     const semester = document.getElementById('semester').value;
     
-    // Popup ยืนยันก่อนลบ
     const result = await Swal.fire({
         title: 'ยืนยันการล้างข้อมูล?',
         html: `ต้องการลบตารางสอนทั้งหมดของ<br>ปี <b>${year}</b> ภาคเรียนที่ <b>${semester}</b><br><span class="text-red-500 font-bold text-sm mt-2 block">⚠️ การกระทำนี้ไม่สามารถเรียกคืนได้!</span>`,
@@ -347,12 +338,15 @@ function shuffleArray(array) {
     return array;
 }
 
+// -------------------------------------------------------------------------
+// MAIN SCHEDULER FUNCTION (Updated Logic)
+// -------------------------------------------------------------------------
 async function startScheduler() {
     const year = document.getElementById('year').value;
     const semester = document.getElementById('semester').value;
     const btn = document.getElementById('btnStart');
     
-    // Popup ยืนยันก่อนเริ่ม
+    // Popup ยืนยัน
     const result = await Swal.fire({
         title: 'ยืนยันการจัดตารางใหม่?',
         html: `สำหรับปี <b>${year}</b> ภาคเรียนที่ <b>${semester}</b><br><span class="text-amber-600 text-sm mt-2 block"><i class="fa-solid fa-triangle-exclamation mr-1"></i> ข้อมูลตารางสอนเดิมในเทอมนี้จะถูกล้างและจัดใหม่</span>`,
@@ -375,16 +369,11 @@ async function startScheduler() {
     try {
         updateProgress(10, "Fetching Data...");
         const response = await fetch(`api_scheduler_data.php?year=${year}&semester=${semester}`);
-        
-        if (!response.ok) {
-            throw new Error(`Server returned ${response.status} ${response.statusText}`);
-        }
-        
         const data = await response.json();
+        
         if(data.error) throw new Error(data.error);
-
         if(!data.tasks || data.tasks.length === 0) {
-            showResult('warning', 'ไม่พบข้อมูลรายวิชา', 'ไม่มีรายวิชาที่ต้องจัดในเทอมนี้ หรือข้อมูลอาจยังไม่ถูกเพิ่มลงในแผนการเรียน');
+            showResult('warning', 'ไม่พบข้อมูลรายวิชา', 'ไม่มีรายวิชาที่ต้องจัดในเทอมนี้');
             return;
         }
 
@@ -396,61 +385,45 @@ async function startScheduler() {
 
         log(`โหลดข้อมูลสำเร็จ: ${rawTasks.length} วิชา, ${rooms.length} ห้อง`, 'success');
 
-        // --- สร้างชื่อกลุ่มเรียนแบบเต็ม ---
-        rawTasks.forEach(t => {
+        // --- เตรียมข้อมูล Task ---
+        let tasks = [];
+        rawTasks.forEach(t => { 
             if(t.cla_year && t.cla_group_no) {
                 let level = Math.max(1, parseInt(year) - parseInt(t.cla_year) + 1);
                 t.full_cla_name = `${t.cla_name}.${level}/${parseInt(t.cla_group_no)}`;
             } else {
                 t.full_cla_name = t.cla_name;
             }
-        });
 
-        // --- 1. ตรวจสอบรายวิชาที่ไม่มีครู ---
-        let missingTeacherSubjects = rawTasks.filter(t => !t.tea_id);
-        
-        if (missingTeacherSubjects.length > 0) {
-            let errorList = missingTeacherSubjects.map(t => 
-                `<span class="text-amber-400 font-bold">${t.sub_code}</span> ${t.sub_name} (กลุ่ม: ${t.full_cla_name})`
-            );
-            errorList.unshift('<span class="text-white font-bold">⚠️ กรุณากำหนดครูผู้สอนให้ครบทุกวิชาก่อนเริ่มจัดตาราง</span>');
-            
-            log('STOP: พบรายวิชาที่ยังไม่ระบุผู้สอน', 'error');
-            
-            showResult('warning', 'ข้อมูลไม่พร้อม (Missing Teachers)', 
-                `พบรายวิชาจำนวน ${missingTeacherSubjects.length} รายการ ที่ยังไม่ได้ระบุครูผู้สอน`, 
-                errorList
-            );
-            
-            document.getElementById('btnStart').disabled = false;
-            document.getElementById('btnStart').classList.remove('opacity-50', 'cursor-not-allowed');
-            return; 
-        }
-
-        let tasks = [];
-        rawTasks.forEach(t => { 
             let tpn = t.sub_th_pr_ot ? t.sub_th_pr_ot.split('-') : [0,0,0]; 
             let theoryHours = parseInt(tpn[0]) || 0;
             let practiceHours = parseInt(tpn[1]) || 0;
             
-            if (theoryHours === 0 && practiceHours === 0) {
-                theoryHours = parseInt(t.sub_hours) || 1;
-            }
+            if (theoryHours === 0 && practiceHours === 0) theoryHours = parseInt(t.sub_hours) || 1;
 
+            // [UPDATED] แยกประเภทวิชาเพื่อหาห้องที่เหมาะสม
             if (theoryHours > 0) {
                 splitHours(theoryHours).forEach((chunk, idx) => {
-                    tasks.push({ ...t, hoursNeeded: chunk, taskType: 'Theory', preferredRoom: t.sub_room_theory, splitPart: idx + 1 });
+                    // ถ้ามีห้องทฤษฎีระบุเฉพาะเจาะจง ให้ใช้ตามนั้น ถ้าไม่มีให้ใช้ preferredRoomType หรือ 'ห้องเรียนสามัญ'
+                    let roomType = t.sub_room_theory || t.sub_preferred_room_type || 'ห้องเรียนสามัญ';
+                    tasks.push({ ...t, hoursNeeded: chunk, taskType: 'Theory', preferredRoomType: roomType, splitPart: idx + 1 });
                 });
             }
 
             if (practiceHours > 0) {
                 splitHours(practiceHours).forEach((chunk, idx) => {
-                    tasks.push({ ...t, hoursNeeded: chunk, taskType: 'Practice', preferredRoom: t.sub_room_practice, splitPart: idx + 1 });
+                    let roomType = t.sub_room_practice || 'ห้องปฏิบัติการ';
+                    tasks.push({ ...t, hoursNeeded: chunk, taskType: 'Practice', preferredRoomType: roomType, splitPart: idx + 1 });
                 });
             }
         });
 
-        tasks.sort((a, b) => b.hoursNeeded - a.hoursNeeded);
+        // เรียงลำดับงาน: วิชาที่จัดยาก (ปฏิบัติ, ชั่วโมงเยอะ) ขึ้นก่อน
+        tasks.sort((a, b) => {
+            if (b.hoursNeeded !== a.hoursNeeded) return b.hoursNeeded - a.hoursNeeded;
+            if (a.taskType === 'Practice' && b.taskType !== 'Practice') return -1;
+            return 0;
+        });
 
         let scheduled = []; 
         let conflictMap = []; 
@@ -459,50 +432,57 @@ async function startScheduler() {
 
         for (let i = 0; i < tasks.length; i++) {
             let task = tasks[i];
-            let percent = 10 + Math.round(((i+1)/tasks.length) * 80);
-            updateProgress(percent, `Scheduling: ${task.sub_code}`);
+            updateProgress(10 + Math.round(((i+1)/tasks.length) * 80), `Scheduling: ${task.sub_code}`);
 
-            let possibleRooms = [];
-            if(task.preferredRoom) {
-                let exactRoom = rooms.find(r => r.roo_id == task.preferredRoom);
-                if(exactRoom) possibleRooms = [exactRoom];
-                else possibleRooms = rooms.filter(r => r.roo_type == task.preferredRoom);
-            }
+            // --- 1. กรองห้อง (Room Logic) ---
+            // กรองห้องตามประเภทที่ต้องการ (เช่น หาห้องปฏิบัติการ หรือ ห้องเรียนสามัญ)
+            let possibleRooms = rooms.filter(r => {
+                return !r.roo_type || (r.roo_type && task.preferredRoomType && r.roo_type.includes(task.preferredRoomType));
+            });
 
-            if(possibleRooms.length == 0) {
-                if (task.taskType === 'Practice') possibleRooms = rooms.filter(r => r.roo_type.includes('ปฏิบัติ') || r.roo_type.includes('Lab'));
-                else possibleRooms = rooms.filter(r => r.roo_type === 'ห้องเรียนสามัญ');
-            }
-            
-            if(possibleRooms.length == 0) possibleRooms = rooms;
+            // Fallback: ถ้าหาห้องตรงประเภทไม่ได้เลย ให้ลองหาห้องทั้งหมด
+            if (possibleRooms.length === 0) possibleRooms = [...rooms];
             
             shuffleArray(possibleRooms); 
-            let isPlaced = false;
             let checkDays = shuffleArray([...days]);
+            let isPlaced = false;
 
             dayLoop:
             for(let day of checkDays) {
-                for(let room of possibleRooms) {
+                
+                // 🔍 [LOGIC FIX] เช็คความต่อเนื่องของห้องเรียนในวันเดียวกัน
+                // ค้นหาว่าวันนี้ วิชานี้ กลุ่มนี้ มีเรียน "ประเภทเดียวกัน" ไปแล้วหรือยัง?
+                let existingSession = scheduled.find(s => 
+                    s.day_id == day && 
+                    s.sub_id == task.sub_id && 
+                    s.cla_id == task.cla_id &&
+                    s.taskType == task.taskType // เงื่อนไขสำคัญ: ต้องเป็น Theory เหมือนกัน หรือ Practice เหมือนกัน ถึงจะบังคับห้องเดิม
+                );
+
+                let dayPossibleRooms = possibleRooms;
+                if (existingSession) {
+                    // ถ้าเจอว่ามีเรียนประเภทเดียวกันในวันนี้แล้ว ให้บังคับใช้ห้องเดิมเท่านั้น (ไม่ต้องเดินย้ายห้อง)
+                    dayPossibleRooms = rooms.filter(r => r.roo_id == existingSession.roo_id);
+                }
+
+                for(let room of dayPossibleRooms) {
                     for(let tIdx = 0; tIdx <= times.length - task.hoursNeeded; tIdx++) {
                         let slots = []; 
                         let conflict = false;
 
                         for(let k=0; k<task.hoursNeeded; k++) {
                             let slot = times[tIdx+k];
+                            
                             // 1. เช็คพักเที่ยง
                             if(slot.tim_range.startsWith('12:00')) { conflict = true; break; }
 
-                            // 2. เช็คเวลาครูไม่ว่าง
+                            // 2. เช็คครูไม่ว่าง (ระบุวัน/เวลา)
                             if (task.tea_id) {
-                                let isTeacherBusy = busySlots.some(b => 
-                                    b.tea_id == task.tea_id && 
-                                    b.day_id == day && 
-                                    b.tim_id == slot.tim_id
-                                );
+                                let isTeacherBusy = busySlots.some(b => b.tea_id == task.tea_id && b.day_id == day && b.tim_id == slot.tim_id);
                                 if (isTeacherBusy) { conflict = true; break; }
                             }
                             
-                            // 3. เช็คตารางชน
+                            // 3. เช็คตารางชน (ห้อง, ครู, กลุ่มเรียน)
                             let isConflict = conflictMap.some(c => 
                                 c.day == day && c.time == slot.tim_id && (
                                     (c.type == 'room' && c.id == room.roo_id) ||      
@@ -519,8 +499,10 @@ async function startScheduler() {
                             slots.forEach(sid => {
                                 scheduled.push({
                                     cla_id: task.cla_id, sub_id: task.sub_id, tea_id: task.tea_id,
-                                    roo_id: room.roo_id, day_id: day, tim_id: sid, sch_hours: task.hoursNeeded
+                                    roo_id: room.roo_id, day_id: day, tim_id: sid, sch_hours: task.hoursNeeded,
+                                    taskType: task.taskType // เก็บประเภทไว้เช็คความต่อเนื่อง
                                 });
+                                // บันทึก Conflict Map
                                 conflictMap.push({day:day, time:sid, type:'room', id:room.roo_id});
                                 conflictMap.push({day:day, time:sid, type:'class', id:task.cla_id});
                                 if(task.tea_id) conflictMap.push({day:day, time:sid, type:'teacher', id:task.tea_id});
@@ -534,19 +516,14 @@ async function startScheduler() {
 
             if(!isPlaced) { 
                 failCount++; 
-                let reason = `<b>${task.sub_code}</b>: `;
-                if(task.tea_id) {
-                    let teacherName = task.tea_fullname || 'ครู';
-                    reason += `<span class="text-red-300">${teacherName}</span> ติดสอน/ไม่ว่าง/ `;
-                }
-                if(task.preferredRoom) reason += `หาห้อง ${task.preferredRoom} ไม่ได้/ `;
-                reason += `กลุ่ม ${task.full_cla_name} เต็ม`;
-                
-                log(`FAILED: ${task.sub_code} - Resource Conflict`, 'error'); 
+                let reason = `<b>${task.sub_code}</b> (${task.taskType}): `;
+                if(task.tea_id) reason += `<span class="text-red-300">${task.tea_fullname || 'ครู'}</span> ตารางแน่น/ `;
+                reason += `หาห้อง ${task.preferredRoomType} ไม่ได้`;
                 failedDetails.push(reason);
             }
         }
 
+        // --- บันทึกข้อมูล ---
         updateProgress(95, "Saving Data...");
         const saveRes = await fetch('api_scheduler_save.php', {
             method: 'POST',
@@ -554,25 +531,13 @@ async function startScheduler() {
             body: JSON.stringify({year, semester, schedules: scheduled})
         });
         
-        if (!saveRes.ok) {
-             throw new Error(`Save failed: ${saveRes.status}`);
-        }
-        
+        if (!saveRes.ok) throw new Error(`Save failed: ${saveRes.status}`);
         const saveJson = await saveRes.json();
 
         if(saveJson.status === 'success') {
             updateProgress(100, "เสร็จสิ้น");
             if (failCount > 0) {
-                let advice = [
-                    "ลองตรวจสอบรายวิชาที่มีเงื่อนไขห้องเรียนเฉพาะเจาะจง",
-                    "ตรวจสอบภาระงานสอนของครู (อาจมีสอนซ้อนกัน หรือครูระบุวันไม่ว่างมากเกินไป)",
-                    "ลองเพิ่มจำนวนห้องเรียน หรือขยายเวลาเรียน",
-                    "<b>รายการที่จัดไม่ได้:</b>"
-                ];
-                failedDetails.slice(0, 10).forEach(d => advice.push(d));
-                if(failedDetails.length > 10) advice.push(`...และอีก ${failedDetails.length - 10} รายการ`);
-
-                showResult('warning', 'จัดตารางได้ไม่ครบถ้วน', `สำเร็จ ${tasks.length - failCount} / ล้มเหลว ${failCount} รายการ`, advice);
+                showResult('warning', 'จัดตารางได้ไม่ครบถ้วน', `สำเร็จ ${tasks.length - failCount} / ล้มเหลว ${failCount} รายการ`, failedDetails);
             } else {
                 showResult('success', 'ประมวลผลเสร็จสิ้น!', 'จัดตารางเรียนเรียบร้อยแล้ว 100%');
             }
