@@ -129,6 +129,7 @@ if ($selected_cla_id) {
         /* ไม่ Fix width ที่นี่ แต่จะใช้ min-width ใน wrapper แทน */
         line-height: 1.2;
         padding-bottom: 2px;
+        text-rendering: optimizeLegibility;
     }
     #schedule-area * {
         font-family: 'Sarabun', sans-serif !important;
@@ -145,18 +146,20 @@ if ($selected_cla_id) {
     .summary-table th { background-color: #f0f0f0 !important; text-align: center; font-weight: bold; }
     
     .day-header { text-align: center; vertical-align: middle; font-weight: bold; font-size: 14px; color: #000; background-color: #fff; padding: 5px; }
-    .writing-vertical { writing-mode: vertical-rl; text-orientation: mixed; transform: rotate(180deg); display: inline-block; }
+    /* ปรับจากแนวตั้งเป็นแนวนอน เพื่อไม่ให้ข้อความภาษาไทยเพี้ยนใน PDF */
+    .writing-vertical { writing-mode: horizontal-tb; text-orientation: mixed; transform: none; display: inline-block; }
     
     .bg-slate-800 { background-color: #333 !important; color: #fff !important; }
     .bg-slate-200 { background-color: #e5e5e5 !important; color: #000 !important; }
     .bg-slate-100 { background-color: #f5f5f5 !important; color: #000 !important; }
     
+    .break-cell { overflow: hidden; max-width: 40px; }
     .schedule-cell { background-color: #ffffff !important; vertical-align: top; padding: 2px; } 
     
-    /* Font sizes inside grid */
-    .text-code { font-size: 11px; font-weight: bold; display: block; }
-    .text-room { font-size: 11px; display: block; }
-    .text-teacher { font-size: 10px; display: block; }
+    /* Font sizes inside grid - ป้องกันชื่อครูเพี้ยน: ใช้ nowrap */
+    .text-code { font-size: 11px; font-weight: bold; display: block; text-align: center; }
+    .text-room { font-size: 11px; display: block; text-align: center; }
+    .text-teacher { font-size: 10px; display: block; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
 </style>
 
 <div class="max-w-7xl mx-auto space-y-6 pb-12">
@@ -225,7 +228,7 @@ if ($selected_cla_id) {
     
     <div class="overflow-x-auto w-full pb-4">
         
-        <div id="schedule-area" class="bg-white p-6 shadow-xl border border-slate-200 min-h-[600px] min-w-[1000px]">
+        <div id="schedule-area" class="bg-white p-6 shadow-xl border border-slate-200 min-h-[550px] min-w-[1000px]">
             
             <div class="flex flex-row gap-4 mb-2 items-start pt-2">
                 
@@ -312,7 +315,7 @@ if ($selected_cla_id) {
                             <th class="p-1 w-[90px] bg-slate-800 text-white font-bold text-center align-middle">วัน</th>
                             <?php $counter = 1; foreach ($time_slots as $slot): 
                                 if (strpos($slot['tim_range'], '12:00') === 0): ?>
-                                <th class="p-1 w-[40px] bg-slate-200 text-black text-center align-middle"><div class="writing-vertical mx-auto font-bold tracking-widest text-[9px]">พัก</div></th>
+                                <th class="p-1 w-[40px] bg-slate-200 text-black text-center align-middle"><div class="writing-vertical mx-auto font-bold text-[10px] leading-tight py-1">พัก</div></th>
                             <?php else: ?>
                                 <th class="p-1 bg-slate-100 text-black align-middle border border-black">
                                     <div class="font-bold text-xs text-indigo-800 mb-0.5">คาบที่ <?php echo $counter++; ?></div>
@@ -334,7 +337,7 @@ if ($selected_cla_id) {
                                 
                                 // พักเที่ยง
                                 if (strpos($slot['tim_range'], '12:00') === 0) { 
-                                    echo '<td class="bg-slate-200 text-black text-center align-middle"><div class="writing-vertical mx-auto text-[10px] font-bold">พักกลางวัน</div></td>'; 
+                                    echo '<td class="bg-slate-200 text-black text-center align-middle break-cell"><div class="text-[10px] font-bold leading-tight"><span class="block">พัก</span><span class="block">กลางวัน</span></div></td>'; 
                                     continue; 
                                 }
                                 
@@ -345,14 +348,14 @@ if ($selected_cla_id) {
                                     // ลบส่วนที่ error ออกแล้ว
 
                                     echo "<td class='schedule-cell' colspan='{$hours}'>";
-                                    echo "<div class='flex flex-col h-full justify-center items-center gap-0.5 w-full'>";
+                                    echo "<div class='flex flex-col h-full justify-center items-center gap-0.5 w-full min-w-0'>";
                                     
                                     // 1. รหัสวิชา
                                     echo "<span class='text-code'>{$info['sub_code']}</span>"; 
                                     // 2. รหัสห้อง
                                     echo "<span class='text-room'>{$info['roo_id']}</span>"; 
                                     // 3. ครูผู้สอน
-                                    echo "<span class='text-teacher'>" . ($info['tea_fullname'] ?: 'รอครูสอน') . "</span>";
+                                    echo "<span class='text-teacher'>" . ($info['tea_fullname'] ? stripThaiPrefix($info['tea_fullname']) : 'รอครูสอน') . "</span>";
                                     
                                     echo "</div></td>";
                                     $skip_slots = $hours - 1;
@@ -376,19 +379,23 @@ if ($selected_cla_id) {
         function exportPDF() { 
             var element = document.getElementById('schedule-area'); 
             var filename = 'ตารางเรียน_<?php echo $class_info['cla_name']; ?>.pdf'; 
+            
             var opt = { 
                 margin: [5,5,5,5], 
                 filename: filename, 
                 image: { type: 'jpeg', quality: 1 }, 
-                html2canvas: { 
-                    scale: 2, 
-                    useCORS: true,
-                    scrollY: 0,
-                    windowWidth: 1200 // ป้องกันตัดหน้า
-                }, 
+html2canvas: { 
+                scale: 2, 
+                useCORS: true,
+                letterRendering: true,
+                scrollY: 0
+            },
                 jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' } 
             }; 
-            html2pdf().set(opt).from(element).save(); 
+            
+            document.fonts.ready.then(() => {
+                html2pdf().set(opt).from(element).save(); 
+            });
         }
     </script>
     

@@ -1,4 +1,5 @@
 <?php
+// htdocs/index.php
 // --- 1. เปิดแสดง Error ---
 ini_set('display_errors', 1);
 ini_set('display_startup_errors', 1);
@@ -36,7 +37,15 @@ $current_year_real = date('Y') + 543;
             theme: {
                 extend: {
                     fontFamily: { sans: ['Sarabun', 'sans-serif'], serif: ['Playfair Display', 'serif'] },
-                    colors: { cvc: { blue: '#1e40af', sky: '#38bdf8', navy: '#0f172a', gold: '#d4af37' } }
+                    // ปรับ Palette สีใหม่: เปลี่ยน Blue เป็น Red tone
+                    colors: { 
+                        cvc: { 
+                            blue: '#b91c1c',  // Primary Red (Red-700)
+                            sky: '#f87171',   // Lighter Red (Red-400)
+                            navy: '#450a0a',  // Dark Maroon (Red-950)
+                            gold: '#fbbf24'   // Gold (Keep same)
+                        } 
+                    }
                 }
             }
         }
@@ -44,7 +53,8 @@ $current_year_real = date('Y') + 543;
     <style>
         body { background-color: #f8fafc; font-family: 'Sarabun', sans-serif; }
         .hero-image {
-            background-image: linear-gradient(to right bottom, rgba(30, 64, 175, 0.9), rgba(15, 23, 42, 0.9)), 
+            /* เปลี่ยน Gradient พื้นหลังเป็น แดง -> แดงเลือดหมูเข้ม */
+            background-image: linear-gradient(to right bottom, rgba(185, 28, 28, 0.9), rgba(69, 10, 10, 0.95)), 
                               url('https://images.unsplash.com/photo-1562774053-701939374585?q=80&w=2586&auto=format&fit=crop');
             background-size: cover;
             background-position: center;
@@ -59,7 +69,7 @@ $current_year_real = date('Y') + 543;
 <body class="min-h-screen flex flex-col">
 
     <div class="fixed top-0 left-0 right-0 z-50 flex justify-center pt-5 px-4 no-print">
-        <nav class="w-full max-w-[85rem] bg-gradient-to-r from-slate-900 via-blue-900 to-slate-900 backdrop-blur-xl rounded-full shadow-[0_8px_30px_rgb(15,23,42,0.4)] border border-slate-700/50 px-6 py-3 flex justify-between items-center transition-all hover:shadow-[0_15px_40px_rgb(15,23,42,0.5)]">
+        <nav class="w-full max-w-[85rem] bg-gradient-to-r from-red-900 via-red-700 to-red-950 backdrop-blur-xl rounded-full shadow-[0_8px_30px_rgb(127,29,29,0.4)] border border-red-800/50 px-6 py-3 flex justify-between items-center transition-all hover:shadow-[0_15px_40px_rgb(127,29,29,0.6)]">
             <a href="index.php" class="flex items-center gap-4 pl-2 group">
                 <div class="relative z-10 group-hover:scale-110 transition duration-500">
                     <div class="bg-white/10 rounded-full p-2 backdrop-blur-sm"> 
@@ -67,14 +77,14 @@ $current_year_real = date('Y') + 543;
                     </div>
                 </div>
                 <div class="leading-tight">
-                    <h1 class="text-xl font-serif font-bold text-white tracking-wide group-hover:text-blue-200 transition">
+                    <h1 class="text-xl font-serif font-bold text-white tracking-wide group-hover:text-red-200 transition">
                         CVC <span class="text-cvc-gold">SmartSystem</span>
                     </h1>
-                    <p class="text-[10px] text-slate-300 font-sans tracking-widest uppercase font-semibold mt-0.5">ChiangRai Vocational College</p>
+                    <p class="text-[10px] text-red-100/80 font-sans tracking-widest uppercase font-semibold mt-0.5">ChiangRai Vocational College</p>
                 </div>
             </a>
             <div class="flex items-center pr-2 gap-3">
-                <a href="login.php" class="bg-white text-blue-900 hover:bg-blue-50 px-6 py-2 rounded-full text-sm font-bold transition shadow-lg flex items-center gap-2 transform hover:-translate-y-0.5">
+                <a href="login.php" class="bg-white text-red-900 hover:bg-red-50 px-6 py-2 rounded-full text-sm font-bold transition shadow-lg flex items-center gap-2 transform hover:-translate-y-0.5 border border-red-100">
                     <i class="fa-solid fa-right-to-bracket"></i> เข้าสู่ระบบ
                 </a>
             </div>
@@ -84,34 +94,34 @@ $current_year_real = date('Y') + 543;
     <div class="flex-grow flex flex-col items-center justify-center relative min-h-[600px]">
         
         <div class="absolute inset-0 overflow-hidden hero-image">
-            <div class="absolute top-0 left-0 w-96 h-96 bg-blue-500 rounded-full blur-[120px] opacity-20 -translate-x-1/2 -translate-y-1/2"></div>
+            <div class="absolute top-0 left-0 w-96 h-96 bg-red-600 rounded-full blur-[120px] opacity-30 -translate-x-1/2 -translate-y-1/2"></div>
             <div class="absolute bottom-0 right-0 w-96 h-96 bg-cvc-gold rounded-full blur-[120px] opacity-20 translate-x-1/2 translate-y-1/2"></div>
         </div>
 
         <div class="relative z-10 w-full px-4 text-center mt-24 pb-12">
             
             <div class="max-w-4xl mx-auto">
-                <div class="inline-block mb-4 px-4 py-1 rounded-full bg-blue-500/20 border border-blue-400/30 text-blue-200 text-xs font-bold uppercase tracking-widest backdrop-blur-md">
+                <div class="inline-block mb-4 px-4 py-1 rounded-full bg-red-900/40 border border-red-400/30 text-red-100 text-xs font-bold uppercase tracking-widest backdrop-blur-md shadow-lg">
                     Academic Service Platform
                 </div>
-                <h1 class="text-5xl md:text-7xl font-serif font-bold mb-6 leading-tight text-transparent bg-clip-text bg-gradient-to-b from-white to-blue-200">
+                <h1 class="text-5xl md:text-7xl font-serif font-bold mb-6 leading-tight text-transparent bg-clip-text bg-gradient-to-b from-white to-red-100 drop-shadow-md">
                     ระบบบริหารจัดการ<br>ตารางเรียนออนไลน์
                 </h1>
-                <p class="text-lg text-blue-100/80 mb-12 font-light max-w-2xl mx-auto">
+                <p class="text-lg text-red-50 mb-12 font-light max-w-2xl mx-auto drop-shadow">
                     ยกระดับการศึกษาด้วยเทคโนโลยีที่ทันสมัย สะดวก รวดเร็ว เชื่อมโยงข้อมูลตารางเรียนและตารางสอนสำหรับนักเรียนและบุคลากร
                 </p>
 
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-8 w-full text-left">
                     
-                    <div class="relative group rounded-[32px] p-1 bg-gradient-to-br from-cyan-400 via-blue-500 to-indigo-600 shadow-2xl hover:shadow-blue-500/50 transition-all duration-300 hover:-translate-y-2 z-10 hover:z-50">
+                    <div class="relative group rounded-[32px] p-1 bg-gradient-to-br from-red-400 via-red-600 to-red-900 shadow-2xl hover:shadow-red-600/50 transition-all duration-300 hover:-translate-y-2 z-10 hover:z-50">
                         <div class="bg-white rounded-[28px] h-full relative">
                             <div class="absolute inset-0 overflow-hidden rounded-[28px] pointer-events-none">
-                                <div class="absolute top-0 right-0 w-32 h-32 bg-blue-50 rounded-full blur-3xl -mr-10 -mt-10 transition group-hover:bg-blue-100"></div>
+                                <div class="absolute top-0 right-0 w-32 h-32 bg-red-50 rounded-full blur-3xl -mr-10 -mt-10 transition group-hover:bg-red-100"></div>
                             </div>
 
                             <div class="relative z-10 p-8 flex flex-col h-full">
                                 <div class="flex items-center gap-5 mb-8">
-                                    <div class="w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 text-white flex items-center justify-center text-3xl shadow-lg shadow-blue-500/30">
+                                    <div class="w-16 h-16 rounded-2xl bg-gradient-to-br from-red-500 to-red-800 text-white flex items-center justify-center text-3xl shadow-lg shadow-red-500/30">
                                         <i class="fa-solid fa-user-graduate"></i>
                                     </div>
                                     <div>
@@ -121,7 +131,7 @@ $current_year_real = date('Y') + 543;
                                 </div>
                                 
                                 <div class="space-y-3 relative">
-                                    <label class="text-xs font-bold text-blue-600 uppercase tracking-wider ml-1">ค้นหาตารางเรียน</label>
+                                    <label class="text-xs font-bold text-red-700 uppercase tracking-wider ml-1">ค้นหาตารางเรียน</label>
                                     <form action="public_schedule.php" method="GET" class="relative" id="form-student">
                                         <input type="hidden" name="mode" value="class">
                                         <input type="hidden" name="id" id="student_id_input">
@@ -129,14 +139,14 @@ $current_year_real = date('Y') + 543;
                                         <div class="relative group/input">
                                             <input type="text" 
                                                 id="student_search"
-                                                class="w-full bg-slate-50 border-2 border-slate-100 hover:border-blue-300 rounded-2xl px-5 py-4 pl-12 text-base focus:ring-4 focus:ring-blue-100 focus:border-blue-500 outline-none text-slate-700 font-bold transition shadow-sm placeholder:font-normal"
+                                                class="w-full bg-slate-50 border-2 border-slate-100 hover:border-red-300 rounded-2xl px-5 py-4 pl-12 text-base focus:ring-4 focus:ring-red-100 focus:border-red-500 outline-none text-slate-700 font-bold transition shadow-sm placeholder:font-normal"
                                                 placeholder="พิมพ์ชื่อกลุ่ม หรือรหัสกลุ่ม..."
                                                 autocomplete="off">
-                                            <div class="absolute left-5 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within/input:text-blue-500 transition-colors">
+                                            <div class="absolute left-5 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within/input:text-red-500 transition-colors">
                                                 <i class="fa-solid fa-magnifying-glass text-lg"></i>
                                             </div>
                                             <div class="absolute right-4 top-1/2 -translate-y-1/2">
-                                                <div id="student_spinner" class="hidden w-5 h-5 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+                                                <div id="student_spinner" class="hidden w-5 h-5 border-2 border-red-500 border-t-transparent rounded-full animate-spin"></div>
                                             </div>
                                         </div>
 
@@ -257,6 +267,7 @@ $current_year_real = date('Y') + 543;
                     } else {
                         filtered.forEach(item => {
                             const div = document.createElement('div');
+                            // ปรับ Hover effect ให้เป็นสีแดง (เมื่อ colorClass = 'red')
                             div.className = `p-4 mb-1 cursor-pointer rounded-xl transition-all duration-200 group flex justify-between items-center hover:bg-${colorClass}-50`;
                             
                             div.innerHTML = `
@@ -292,7 +303,8 @@ $current_year_real = date('Y') + 543;
         }
 
         // 3. เริ่มทำงาน
-        setupSearch('student_search', 'student_dropdown', 'student_id_input', 'student_spinner', studentsData, 'blue');
+        // เปลี่ยนพารามิเตอร์ student เป็น 'red'
+        setupSearch('student_search', 'student_dropdown', 'student_id_input', 'student_spinner', studentsData, 'red');
         setupSearch('teacher_search', 'teacher_dropdown', 'teacher_id_input', 'teacher_spinner', teachersData, 'amber');
 
     </script>

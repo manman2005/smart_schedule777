@@ -153,7 +153,7 @@ require_once '../includes/header.php';
         color: #000000 !important; /* บังคับสีดำ */
         line-height: 1.2;
         padding-bottom: 2px;
-        text-rendering: geometricPrecision; /* ช่วยให้ Render Text ชัดขึ้น */
+        text-rendering: optimizeLegibility; /* ช่วยให้ตัวอักษรไทยแสดงผลถูกต้อง */
     }
     #schedule-area * {
         font-family: 'Sarabun', sans-serif !important;
@@ -190,10 +190,12 @@ require_once '../includes/header.php';
         padding: 5px;
     }
     
+    /* เดิมใช้ตัวหนังสือแนวตั้งแล้วภาษาไทยเพี้ยนใน PDF
+       ปรับให้เป็นตัวหนังสือแนวนอนปกติแทน เพื่อให้คำว่า "พักกลางวัน" แสดงถูกต้อง */
     .writing-vertical { 
-        writing-mode: vertical-rl; 
+        writing-mode: horizontal-tb; 
         text-orientation: mixed; 
-        transform: rotate(180deg);
+        transform: none;
         display: inline-block;
     }
 
@@ -201,12 +203,14 @@ require_once '../includes/header.php';
     .bg-slate-200 { background-color: #e5e5e5 !important; color: #000 !important; }
     .bg-slate-100 { background-color: #f5f5f5 !important; color: #000 !important; }
     .bg-slate-50  { background-color: #fafafa !important; }
+    .break-cell { overflow: hidden; max-width: 40px; }
     .schedule-cell { background-color: #ffffff !important; } 
     
     /* เพิ่ม color: #000 !important เพื่อบังคับสีดำใน span */
-    .schedule-text-code { font-size: 10px; font-weight: bold; color: #000 !important; }
-    .schedule-text-name { font-size: 11px; font-weight: bold; color: #000 !important; }
-    .schedule-text-info { font-size: 10px; color: #000 !important; }
+    .schedule-text-code { font-size: 10px; font-weight: bold; color: #000 !important; text-align: center; }
+    .schedule-text-name { font-size: 11px; font-weight: bold; color: #000 !important; text-align: center; }
+    /* ป้องกันชื่อครูเพี้ยน: ไม่ตัดคำไทย - ใช้ nowrap แทน wrap */
+    .schedule-text-info { font-size: 10px; color: #000 !important; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; display: block; }
 
 </style>
 
@@ -264,7 +268,7 @@ require_once '../includes/header.php';
     </div>
 
     <div class="overflow-x-auto w-full pb-4"> 
-        <div id="schedule-area" class="bg-white p-6 shadow-xl min-h-[800px] border border-slate-200 min-w-[1000px]"> <?php if ($mode == 'class'): ?>
+        <div id="schedule-area" class="bg-white p-6 shadow-xl border border-slate-200 min-w-[1000px]"> <?php if ($mode == 'class'): ?>
                 <div class="flex flex-row gap-4 mb-4 items-start">
                     <div class="w-[40%] flex flex-col gap-4">
                         <div class="flex items-center gap-4 border-b border-black pb-4">
@@ -356,7 +360,7 @@ require_once '../includes/header.php';
                                 if (strpos($slot['tim_range'], '12:00') === 0): 
                             ?>
                                 <th class="p-1 w-[40px] bg-slate-200 text-black text-center align-middle">
-                                    <div class="writing-vertical mx-auto font-bold tracking-widest text-[9px] text-black">พัก</div>
+                                    <div class="writing-vertical mx-auto font-bold text-[10px] leading-tight py-1 text-black">พัก</div>
                                 </th>
                             <?php else: ?>
                                 <th class="p-1 bg-slate-100 text-black align-middle border border-black">
@@ -384,8 +388,8 @@ require_once '../includes/header.php';
                                 
                                 // ใส่ข้อความ พักกลางวัน ทุกช่องที่เป็นเวลา 12:00
                                 if (strpos($slot['tim_range'], '12:00') === 0) { 
-                                    echo '<td class="bg-slate-50 text-black text-center align-middle">';
-                                    echo '<div class="writing-vertical mx-auto text-[10px] font-bold text-black">พักกลางวัน</div>';
+                                    echo '<td class="bg-slate-50 text-black text-center align-middle break-cell">';
+                                    echo '<div class="text-[10px] font-bold leading-tight text-black"><span class="block">พัก</span><span class="block">กลางวัน</span></div>';
                                     echo '</td>'; 
                                     continue; 
                                 }
@@ -399,21 +403,21 @@ require_once '../includes/header.php';
                                     $r_no = intval($info['cla_group_no']);
                                     $cls_txt = "{$info['cla_name']}.{$stu_lev}/{$r_no}";
 
-                                    echo "<td class='schedule-cell p-1 align-top h-16 overflow-hidden' colspan='{$hours}'>";
-                                    echo "<div class='flex flex-col h-full justify-center items-center gap-0.5 w-full'>";
+                                    echo "<td class='schedule-cell p-1 align-top h-16' colspan='{$hours}'>";
+                                    echo "<div class='flex flex-col h-full justify-center items-center gap-0.5 w-full min-w-0'>";
                                     
                                     // *** จุดแก้ไขสำคัญ: เพิ่ม class text-black ในทุก span ***
                                     echo "<span class='schedule-text-code text-black'>{$info['sub_code']}</span>"; 
                                     
                                     if ($mode == 'room') {
-                                        echo "<span class='schedule-text-info text-black'>{$info['tea_fullname']}</span>";
+                                        echo "<span class='schedule-text-info text-black'>" . htmlspecialchars(stripThaiPrefix($info['tea_fullname'])) . "</span>";
                                         echo "<span class='schedule-text-info font-bold text-black'>{$cls_txt}</span>";
                                     } else {
                                         echo "<span class='schedule-text-info text-black'>{$info['roo_id']}</span>";
                                         if ($mode == 'teacher') {
                                             echo "<span class='schedule-text-info font-bold text-black'>{$cls_txt}</span>";
                                         } else {
-                                            echo "<span class='schedule-text-info text-black'>{$info['tea_fullname']}</span>"; 
+                                            echo "<span class='schedule-text-info text-black'>" . htmlspecialchars(stripThaiPrefix($info['tea_fullname'])) . "</span>"; 
                                         }
                                     }
                                     echo "</div></td>";
@@ -431,30 +435,27 @@ require_once '../includes/header.php';
     </div> </div>
 
 <script>
-    function exportPDF() {
-        var element = document.getElementById('schedule-area');
+    function exportPDF() { 
+        var element = document.getElementById('schedule-area'); 
         var mode = "<?php echo $mode; ?>";
         var id = "<?php echo $id; ?>";
-        var filename = 'Schedule_' + mode + '_' + id + '.pdf';
-
-        var opt = {
-            margin:       [5, 5, 5, 5], 
-            filename:     filename,
-            image:        { type: 'jpeg', quality: 1.0 }, 
-            html2canvas:  { 
-                scale: 4,        
-                useCORS: true, 
+        var filename = 'Schedule_' + mode + '_' + id + '.pdf'; 
+        
+        var opt = { 
+            margin: [5,5,5,5], 
+            filename: filename, 
+            image: { type: 'jpeg', quality: 1 }, 
+            html2canvas: { 
+                scale: 2, 
+                useCORS: true,
                 letterRendering: true,
-                scrollY: 0,
-                // ป้องกันปัญหาตัดหน้าในบาง browser
-                windowWidth: 1200 
-            },
-            jsPDF:        { unit: 'mm', format: 'a4', orientation: 'landscape' }
-        };
-
-        // สั่งพิมพ์ทันทีที่ฟอนต์โหลดเสร็จ เพื่อกันฟอนต์เพี้ยน
+                scrollY: 0
+            }, 
+            jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' } 
+        }; 
+        
         document.fonts.ready.then(() => {
-            html2pdf().set(opt).from(element).save();
+            html2pdf().set(opt).from(element).save(); 
         });
     }
 </script>
