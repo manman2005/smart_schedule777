@@ -49,7 +49,6 @@ require_once '../includes/header.php';
             </div>
         </div>
     </div>
-
     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
         <a href="my_schedule.php" class="group card-premium p-8 flex flex-col justify-between min-h-[200px] hover:border-cvc-blue/30 transition">
             <div class="flex justify-between items-start">
@@ -66,15 +65,6 @@ require_once '../includes/header.php';
             </div>
         </a>
 
-        <div class="card-premium p-8 flex flex-col justify-between min-h-[200px] opacity-60 border-dashed border-2 border-slate-300 cursor-not-allowed bg-slate-50/50">
-            <div class="w-14 h-14 rounded-2xl bg-slate-100 text-slate-400 flex items-center justify-center text-2xl">
-                <i class="fa-solid fa-file-invoice"></i>
-            </div>
-            <div>
-                <h3 class="text-xl font-serif font-bold text-slate-500 mb-1">ผลการเรียน</h3>
-                <p class="text-xs text-slate-400">อยู่ระหว่างการปรับปรุงระบบ (Coming Soon)</p>
-            </div>
-        </div>
     </div>
 </div>
 

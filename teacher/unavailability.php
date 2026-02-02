@@ -117,9 +117,6 @@ require_once '../includes/header.php';
 
             <div class="mt-8 flex justify-center gap-4">
                 <?php if ($system_status == '1'): ?>
-                    <button type="reset" class="px-6 py-2 rounded-full border border-slate-300 text-slate-500 hover:bg-slate-100 font-bold transition">
-                        ล้างค่า
-                    </button>
                     <button type="submit" class="px-8 py-2 rounded-full bg-red-600 text-white font-bold shadow-lg shadow-red-500/30 hover:bg-red-700 hover:-translate-y-1 transition">
                         <i class="fa-solid fa-save mr-2"></i> บันทึกข้อมูล
                     </button>

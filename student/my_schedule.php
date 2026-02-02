@@ -1,24 +1,16 @@
 <?php
 // student/my_schedule.php
-// เวอร์ชัน: Responsive Scroll + New Layout (มาตรฐานเดียวกับ Admin/Teacher)
-ini_set('display_errors', 1);
-ini_set('display_startup_errors', 1);
-error_reporting(E_ALL);
+// แก้ไขล่าสุด: เพิ่ม letterRendering: true เพื่อแก้ปัญหาสระลอย และจัด filename ให้ปลอดภัย
 
 require_once '../config/db.php';
 require_once '../includes/auth.php';
 checkStudent();
 
-// --- แก้ปัญหา Server Error 500 (SQL JOIN Limitation) ---
-try {
-    $pdo->exec("SET SQL_BIG_SELECTS=1");
-} catch (PDOException $e) {}
-
 $stu_id = $_SESSION['user_id'];
 
 // 1. ดึงข้อมูลนักเรียน + กลุ่มเรียน + ครูที่ปรึกษา
 $stmt = $pdo->prepare("SELECT s.*, c.cla_id, c.cla_name, c.cla_year, c.cla_group_no, 
-                             t.tea_fullname AS advisor_name, m.maj_name
+                              t.tea_fullname AS advisor_name, m.maj_name
                        FROM students s 
                        JOIN class_groups c ON s.cla_id = c.cla_id 
                        LEFT JOIN teachers t ON c.tea_id = t.tea_id
@@ -26,50 +18,27 @@ $stmt = $pdo->prepare("SELECT s.*, c.cla_id, c.cla_name, c.cla_year, c.cla_group
                        WHERE s.stu_id = ?");
 $stmt->execute([$stu_id]);
 $student = $stmt->fetch();
-
-if (!$student) {
-    die("<div class='p-10 text-center text-red-500 font-bold'>ไม่พบข้อมูลนักเรียน หรือคุณยังไม่ได้สังกัดกลุ่มเรียน<br>กรุณาติดต่อผู้ดูแลระบบ</div>");
-}
-
 $cla_id = $student['cla_id'];
 
 // สร้างชื่อกลุ่มเรียนเต็มรูปแบบ
 $current_year_real = date('Y') + 543;
 $stu_level = $current_year_real - $student['cla_year'] + 1;
-if ($stu_level < 1) $stu_level = 1; 
 $room_no = intval($student['cla_group_no']);
 $cla_name_full = "{$student['maj_name']} {$student['cla_name']}.{$stu_level}/{$room_no}";
-$advisor_name = $student['advisor_name'] ?? "-";
+$advisor_name = $student['advisor_name'] ?? "..................................................";
 
-// --- Period Selector Logic ---
+// Period Selector Logic
 $stmt_periods = $pdo->query("SELECT DISTINCT sch_academic_year, sch_semester FROM schedule ORDER BY sch_academic_year DESC, sch_semester ASC");
 $available_periods = $stmt_periods->fetchAll();
-
 if(count($available_periods) > 0) { 
     $default_year = $available_periods[0]['sch_academic_year']; 
     $default_semester = $available_periods[0]['sch_semester']; 
 } else { 
-    $default_year = $current_year_real; 
+    $default_year = date('Y') + 543; 
     $default_semester = 1; 
 }
-
 $selected_year = $_GET['year'] ?? $default_year;
-
-$valid_semesters_for_year = [];
-foreach($available_periods as $p) {
-    if($p['sch_academic_year'] == $selected_year) {
-        $valid_semesters_for_year[] = $p['sch_semester'];
-    }
-}
-sort($valid_semesters_for_year);
-if(empty($valid_semesters_for_year)) $valid_semesters_for_year = [1];
-
-$req_semester = $_GET['semester'] ?? $default_semester;
-if(in_array($req_semester, $valid_semesters_for_year)) {
-    $selected_semester = $req_semester;
-} else {
-    $selected_semester = $valid_semesters_for_year[0];
-}
+$selected_semester = $_GET['semester'] ?? $default_semester;
 
 $time_slots = $pdo->query("SELECT * FROM time_slots ORDER BY tim_start ASC")->fetchAll();
 
@@ -92,7 +61,7 @@ foreach ($rows as $row) {
     ];
 }
 
-// 3. ดึงข้อมูลสรุปรายวิชา
+// 3. ดึงข้อมูลสรุปรายวิชา (สำหรับตารางมุมขวา)
 $subject_summary = [];
 $sql_sum = "SELECT DISTINCT s.sub_id, s.sub_code, s.sub_name, s.sub_th_pr_ot, s.sub_credit
             FROM schedule sch
@@ -130,16 +99,13 @@ foreach($raw_summary as $sub) {
         #schedule-area { position: absolute; left: 0; top: 0; width: 100%; border: none !important; box-shadow: none !important; padding: 0 !important; } 
         .no-print { display: none !important; } 
         * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
-        
-        /* Reset min-width for print */
-        .min-w-\[1000px\] { min-width: 0 !important; width: 100% !important; }
-        .overflow-x-auto { overflow: visible !important; }
     }
     
     #schedule-area {
         font-family: 'Sarabun', sans-serif !important; 
         background-color: #ffffff;
         color: #000000;
+        width: 100%;
         line-height: 1.2;
         padding-bottom: 2px;
     }
@@ -175,25 +141,29 @@ foreach($raw_summary as $sub) {
 <div class="max-w-7xl mx-auto space-y-6 pb-12">
     
     <div class="flex justify-between items-center no-print">
+        <a href="index.php" class="inline-flex items-center gap-2 text-slate-500 hover:text-cvc-blue transition font-bold text-sm bg-white px-4 py-2 rounded-lg border border-slate-200 shadow-sm hover:shadow-md">
+            <i class="fa-solid fa-arrow-left"></i> กลับหน้าหลัก
+        </a>
+        <div class="text-right hidden md:block">
+            <h1 class="text-lg font-bold text-slate-700">ตารางเรียนของฉัน</h1>
+            <p class="text-xs text-slate-400"><?php echo htmlspecialchars($student['stu_fullname']); ?></p>
+        </div>
+    </div>
+
+    <div class="card-premium p-4 flex flex-col md:flex-row justify-between items-center gap-4 no-print">
         <div class="flex items-center gap-3">
             <div class="w-10 h-10 rounded-full bg-indigo-50 flex items-center justify-center text-indigo-600">
                 <i class="fa-solid fa-calendar-days"></i>
             </div>
             <div>
-                <h1 class="text-lg font-bold text-slate-700">ตารางเรียนของฉัน</h1>
-                <p class="text-xs text-slate-400">ชื่อผู้ใช้งาน: <?php echo htmlspecialchars($student['stu_fullname']); ?></p>
+                <h2 class="font-bold text-slate-700">ปีการศึกษา / ภาคเรียน</h2>
+                <p class="text-xs text-slate-500">เลือกช่วงเวลาที่ต้องการดูตาราง</p>
             </div>
         </div>
-        <a href="index.php" class="inline-flex items-center gap-2 text-slate-500 hover:text-cvc-blue transition font-bold text-sm bg-white px-4 py-2 rounded-lg border border-slate-200 shadow-sm hover:shadow-md">
-            <i class="fa-solid fa-house"></i> หน้าหลัก
-        </a>
-    </div>
-
-    <div class="card-premium p-6 no-print border-l-4 border-l-cvc-blue">
-        <form method="GET" action="" class="flex flex-col md:flex-row gap-4 items-end">
-            <div class="w-full md:w-1/3">
-                <label class="block text-xs font-bold text-slate-500 uppercase mb-1">ปีการศึกษา</label>
-                <select name="year" class="w-full bg-slate-50 border border-slate-200 rounded-lg py-2.5 px-3 text-sm focus:ring-2 focus:ring-cvc-blue outline-none" onchange="this.form.submit()">
+        
+        <div class="flex gap-2 flex-wrap justify-center">
+            <form method="GET" class="flex gap-2">
+                <select name="year" class="bg-slate-50 border border-slate-200 text-slate-600 text-sm rounded-lg focus:ring-cvc-blue outline-none" onchange="this.form.submit()">
                     <?php 
                     $unique_years = [];
                     foreach($available_periods as $p) { if(!in_array($p['sch_academic_year'], $unique_years)) $unique_years[] = $p['sch_academic_year']; }
@@ -203,27 +173,22 @@ foreach($raw_summary as $sub) {
                         <option value="<?php echo $y; ?>" <?php echo $selected_year == $y ? 'selected' : ''; ?>>ปี <?php echo $y; ?></option>
                     <?php endforeach; ?>
                 </select>
-            </div>
-            <div class="w-full md:w-1/3">
-                <label class="block text-xs font-bold text-slate-500 uppercase mb-1">ภาคเรียน</label>
-                <select name="semester" class="w-full bg-slate-50 border border-slate-200 rounded-lg py-2.5 px-3 text-sm focus:ring-2 focus:ring-cvc-blue outline-none" onchange="this.form.submit()">
-                    <?php foreach($valid_semesters_for_year as $s): ?>
+                <select name="semester" class="bg-slate-50 border border-slate-200 text-slate-600 text-sm rounded-lg focus:ring-cvc-blue outline-none" onchange="this.form.submit()">
+                    <?php for($s = 1; $s <= 3; $s++): ?>
                         <option value="<?php echo $s; ?>" <?php echo $selected_semester == $s ? 'selected' : ''; ?>>เทอม <?php echo $s; ?></option>
-                    <?php endforeach; ?>
+                    <?php endfor; ?>
                 </select>
-            </div>
-            <div class="w-full md:w-auto flex gap-2">
-                <button type="button" onclick="window.print()" class="bg-cvc-blue text-white px-6 py-2.5 rounded-lg hover:bg-blue-800 text-sm font-bold shadow-md transition w-full md:w-auto"><i class="fa-solid fa-print mr-2"></i> พิมพ์</button>
-                <button type="button" onclick="exportPDF()" class="bg-red-500 text-white px-6 py-2.5 rounded-lg hover:bg-red-600 text-sm font-bold shadow-md transition w-full md:w-auto"><i class="fa-solid fa-file-pdf mr-2"></i> PDF</button>
-            </div>
-        </form>
+            </form>
+            <div class="h-9 w-px bg-slate-200 mx-1 hidden md:block"></div>
+            <button onclick="window.print()" class="bg-cvc-blue text-white px-4 py-2 rounded-lg hover:bg-blue-800 text-sm font-bold shadow-md"><i class="fa-solid fa-print"></i></button>
+            <button onclick="exportPDF()" class="bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-600 text-sm font-bold shadow-md"><i class="fa-solid fa-file-pdf"></i></button>
+        </div>
     </div>
 
-    <div class="overflow-x-auto w-full pb-4">
-        
-        <div id="schedule-area" class="bg-white p-6 shadow-xl border border-slate-200 min-h-[600px] min-w-[1000px]">
+    <div class="w-full flex justify-center">
+        <div id="schedule-area" class="bg-white p-6 shadow-xl border border-slate-200 min-h-[600px]">
             
-            <div class="flex flex-row gap-4 mb-2 items-start pt-2">
+            <div class="flex flex-row gap-4 mb-2 items-start">
                 
                 <div class="w-[45%] flex flex-col gap-2">
                     <div class="flex items-center gap-3 border-b-2 border-black pb-2 mb-2">
@@ -240,16 +205,16 @@ foreach($raw_summary as $sub) {
                             <span class="text-black col-span-7">: <?php echo "$selected_semester / $selected_year"; ?></span>
                         </div>
                         <div class="grid grid-cols-10">
-                            <span class="font-bold text-black col-span-3">ชื่อ-สกุล</span>
-                            <span class="text-black col-span-7">: <?php echo htmlspecialchars($student['stu_fullname']); ?></span>
-                        </div>
-                        <div class="grid grid-cols-10">
-                            <span class="font-bold text-black col-span-3">กลุ่มเรียน</span>
-                            <span class="text-black col-span-7 font-bold">: <?php echo $cla_name_full; ?></span>
-                        </div>
-                        <div class="grid grid-cols-10">
                             <span class="font-bold text-black col-span-3">ครูที่ปรึกษา</span>
-                            <span class="text-black col-span-7">: <?php echo $advisor_name; ?></span>
+                            <span class="text-black col-span-7 font-bold">: <?php echo $advisor_name; ?></span>
+                        </div>
+                        <div class="grid grid-cols-10">
+                            <span class="font-bold text-black col-span-3">รหัสกลุ่มเรียน</span>
+                            <span class="text-black col-span-7">: <?php echo $cla_id; ?></span>
+                        </div>
+                        <div class="grid grid-cols-10">
+                            <span class="font-bold text-black col-span-3">ชื่อกลุ่มเรียน</span>
+                            <span class="text-black col-span-7 font-bold">: <?php echo $cla_name_full; ?></span>
                         </div>
                     </div>
                 </div>
@@ -337,18 +302,14 @@ foreach($raw_summary as $sub) {
                                 if (isset($schedule_data[$d][$t_id])) {
                                     $info = $schedule_data[$d][$t_id]['info']; 
                                     $hours = $schedule_data[$d][$t_id]['hours']; 
-
+                                    
                                     echo "<td class='schedule-cell' colspan='{$hours}'>";
                                     echo "<div class='flex flex-col h-full justify-center items-center gap-0.5 w-full'>";
                                     
-                                    // 1. รหัสวิชา
+                                    // 3. ข้อมูลในตาราง (รหัสวิชา, รหัสห้อง, ครูผู้สอน)
                                     echo "<span class='text-code'>{$info['sub_code']}</span>"; 
-                                    // 2. รหัสห้อง
                                     echo "<span class='text-room'>{$info['roo_id']}</span>"; 
-                                    // 3. ครูผู้สอน (ตัดคำนำหน้า)
-                                    $tea_name = $info['tea_fullname'] ?: 'รอครูสอน';
-                                    $tea_name = preg_replace('/^(นาย|นางสาว|นาง|ว่าที่ร้อยตรี|ว่าที่ร\.ต\.|ดร\.|ผศ\.|รศ\.|ศ\.|อ\.|อาจารย์)\s*/u', '', $tea_name);
-                                    echo "<span class='text-teacher'>" . $tea_name . "</span>";
+                                    echo "<span class='text-teacher'>" . ($info['tea_fullname'] ?: 'รอครูสอน') . "</span>";
                                     
                                     echo "</div></td>";
                                     $skip_slots = $hours - 1;
@@ -371,7 +332,10 @@ foreach($raw_summary as $sub) {
     <script>
         function exportPDF() { 
             var element = document.getElementById('schedule-area'); 
-            var filename = 'ตารางเรียน_<?php echo $student['stu_fullname']; ?>.pdf'; 
+            
+            // แทนที่เครื่องหมาย / ด้วย - เพื่อให้ตั้งชื่อไฟล์ได้ (แก้ Bug filename)
+            var filename = 'ตารางเรียน_<?php echo str_replace(['/', '\\'], '-', $cla_name_full); ?>.pdf'; 
+            
             var opt = { 
                 margin: [5,5,5,5], 
                 filename: filename, 
@@ -379,14 +343,17 @@ foreach($raw_summary as $sub) {
                 html2canvas: { 
                     scale: 2, 
                     useCORS: true,
-                    scrollY: 0,
-                    windowWidth: 1200 
+                    letterRendering: true, // <--- จุดสำคัญ: แก้สระลอย/ซ้อน
+                    scrollY: 0             // <--- จุดสำคัญ: ป้องกันภาพเลื่อน
                 }, 
                 jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' } 
             }; 
-            html2pdf().set(opt).from(element).save(); 
+            
+            // รอให้ฟอนต์โหลดเสร็จก่อนค่อย Generate (สำคัญมากสำหรับ Sarabun)
+            document.fonts.ready.then(() => {
+                html2pdf().set(opt).from(element).save(); 
+            });
         }
     </script>
 </div>
-
 <?php require_once '../includes/footer.php'; ?>

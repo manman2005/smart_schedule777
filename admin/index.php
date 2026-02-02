@@ -52,9 +52,6 @@ try {
     $sys_btn_label = "ฐานข้อมูลมีปัญหา";
     $sys_btn_sub = "คลิกเพื่อซ่อมแซม";
     $sys_status_indicator = '<div class="absolute top-3 right-3 text-amber-500 animate-bounce"><i class="fa-solid fa-triangle-exclamation"></i></div>';
-    
-    // ถ้าตารางหาย ให้ปุ่มนี้วิ่งไปหน้าซ่อมไฟล์ (ถ้าคุณมี fix_db.php) หรือไปหน้า setting เพื่อรัน SQL ใหม่
-    // ในที่นี้ให้ไป system_settings.php เหมือนเดิม เพราะผมแก้โค้ดให้มันสร้างตารางอัตโนมัติแล้ว
 }
 
 require_once '../includes/header.php'; 
@@ -166,18 +163,6 @@ require_once '../includes/header.php';
                 
                 <div class="grid grid-cols-2 md:grid-cols-4 gap-4 relative z-10">
                     
-                    <a href="system_settings.php" class="relative flex flex-col items-center justify-center p-4 rounded-2xl bg-<?php echo $sys_btn_color; ?>-50/40 hover:bg-<?php echo $sys_btn_color; ?>-50 border border-<?php echo $sys_btn_color; ?>-100/50 hover:border-<?php echo $sys_btn_color; ?>-200 transition-all duration-300 group cursor-pointer text-center shadow-sm hover:shadow-md hover:-translate-y-1">
-                        
-                        <?php echo $sys_status_indicator; ?>
-
-                        <div class="w-12 h-12 rounded-full bg-white flex items-center justify-center shadow-sm mb-3 group-hover:scale-110 transition duration-300 ring-4 ring-<?php echo $sys_btn_color; ?>-50 group-hover:ring-<?php echo $sys_btn_color; ?>-100">
-                            <i class="fa-solid <?php echo $sys_btn_icon; ?> text-xl text-<?php echo $sys_btn_color; ?>-500 group-hover:text-<?php echo $sys_btn_color; ?>-600"></i>
-                        </div>
-                        
-                        <span class="text-xs font-bold text-slate-700 group-hover:text-<?php echo $sys_btn_color; ?>-700 transition"><?php echo $sys_btn_label; ?></span>
-                        <span class="text-[10px] text-slate-400 font-light mt-1"><?php echo $sys_btn_sub; ?></span>
-                    </a>
-
                     <?php
                     $configs = [
                         ['url' => 'manage_levels.php', 'label' => 'ระดับชั้น', 'icon' => 'fa-layer-group', 'color' => 'blue'],

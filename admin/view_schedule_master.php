@@ -1,6 +1,6 @@
 <?php
 // admin/view_schedule_master.php
-// เวอร์ชัน: Print Friendly + Horizontal Scroll on Mobile
+// เวอร์ชัน: Print Friendly + Horizontal Scroll on Mobile + Fix Invisible Text
 require_once '../config/db.php';
 
 // --- แก้ไข Error 500 / 1104 (Big Selects) ---
@@ -150,10 +150,10 @@ require_once '../includes/header.php';
     #schedule-area {
         font-family: 'Sarabun', sans-serif !important; 
         background-color: #ffffff;
-        color: #000000;
-        /* ไม่ Fix ความกว้างที่นี่ แต่จะไป Fix ที่ตารางแทน */
+        color: #000000 !important; /* บังคับสีดำ */
         line-height: 1.2;
         padding-bottom: 2px;
+        text-rendering: geometricPrecision; /* ช่วยให้ Render Text ชัดขึ้น */
     }
     #schedule-area * {
         font-family: 'Sarabun', sans-serif !important;
@@ -185,7 +185,7 @@ require_once '../includes/header.php';
         vertical-align: middle;
         font-weight: bold; 
         font-size: 14px; 
-        color: #000; 
+        color: #000 !important; 
         background-color: #fff; 
         padding: 5px;
     }
@@ -203,9 +203,10 @@ require_once '../includes/header.php';
     .bg-slate-50  { background-color: #fafafa !important; }
     .schedule-cell { background-color: #ffffff !important; } 
     
-    .schedule-text-code { font-size: 10px; font-weight: bold; }
-    .schedule-text-name { font-size: 11px; font-weight: bold; }
-    .schedule-text-info { font-size: 10px; }
+    /* เพิ่ม color: #000 !important เพื่อบังคับสีดำใน span */
+    .schedule-text-code { font-size: 10px; font-weight: bold; color: #000 !important; }
+    .schedule-text-name { font-size: 11px; font-weight: bold; color: #000 !important; }
+    .schedule-text-info { font-size: 10px; color: #000 !important; }
 
 </style>
 
@@ -286,13 +287,13 @@ require_once '../includes/header.php';
                         <table class="summary-table-sm w-full">
                             <thead>
                                 <tr>
-                                    <th class="w-8">ที่</th>
-                                    <th class="w-20">รหัสวิชา</th>
-                                    <th>ชื่อรายวิชา</th>
-                                    <th class="w-8">ท.</th>
-                                    <th class="w-8">ป.</th>
-                                    <th class="w-8">น.</th>
-                                    <th class="w-10">ช.</th>
+                                    <th class="w-8 text-black">ที่</th>
+                                    <th class="w-20 text-black">รหัสวิชา</th>
+                                    <th class="text-black">ชื่อรายวิชา</th>
+                                    <th class="w-8 text-black">ท.</th>
+                                    <th class="w-8 text-black">ป.</th>
+                                    <th class="w-8 text-black">น.</th>
+                                    <th class="w-10 text-black">ช.</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -303,23 +304,23 @@ require_once '../includes/header.php';
                                     $sum_t += $sub['t']; $sum_p += $sub['p']; $sum_c += $sub['c']; $sum_h += $sub['total_hours'];
                                 ?>
                                 <tr>
-                                    <td class="text-center"><?php echo $i++; ?></td>
-                                    <td class="text-center font-bold"><?php echo $sub['code']; ?></td>
-                                    <td class="truncate max-w-[200px]"><?php echo $sub['name']; ?></td>
-                                    <td class="text-center"><?php echo $sub['t']; ?></td>
-                                    <td class="text-center"><?php echo $sub['p']; ?></td>
-                                    <td class="text-center font-bold"><?php echo $sub['c']; ?></td>
-                                    <td class="text-center font-bold"><?php echo $sub['total_hours']; ?></td>
+                                    <td class="text-center text-black"><?php echo $i++; ?></td>
+                                    <td class="text-center font-bold text-black"><?php echo $sub['code']; ?></td>
+                                    <td class="truncate max-w-[200px] text-black"><?php echo $sub['name']; ?></td>
+                                    <td class="text-center text-black"><?php echo $sub['t']; ?></td>
+                                    <td class="text-center text-black"><?php echo $sub['p']; ?></td>
+                                    <td class="text-center font-bold text-black"><?php echo $sub['c']; ?></td>
+                                    <td class="text-center font-bold text-black"><?php echo $sub['total_hours']; ?></td>
                                 </tr>
                                 <?php endforeach; ?>
                             </tbody>
                             <tfoot>
                                 <tr class="font-bold bg-gray-100">
-                                    <td colspan="3" class="text-right pr-2">รวม</td>
-                                    <td class="text-center"><?php echo $sum_t; ?></td>
-                                    <td class="text-center"><?php echo $sum_p; ?></td>
-                                    <td class="text-center"><?php echo $sum_c; ?></td>
-                                    <td class="text-center"><?php echo $sum_h; ?></td>
+                                    <td colspan="3" class="text-right pr-2 text-black">รวม</td>
+                                    <td class="text-center text-black"><?php echo $sum_t; ?></td>
+                                    <td class="text-center text-black"><?php echo $sum_p; ?></td>
+                                    <td class="text-center text-black"><?php echo $sum_c; ?></td>
+                                    <td class="text-center text-black"><?php echo $sum_h; ?></td>
                                 </tr>
                             </tfoot>
                         </table>
@@ -355,7 +356,7 @@ require_once '../includes/header.php';
                                 if (strpos($slot['tim_range'], '12:00') === 0): 
                             ?>
                                 <th class="p-1 w-[40px] bg-slate-200 text-black text-center align-middle">
-                                    <div class="writing-vertical mx-auto font-bold tracking-widest text-[9px]">พัก</div>
+                                    <div class="writing-vertical mx-auto font-bold tracking-widest text-[9px] text-black">พัก</div>
                                 </th>
                             <?php else: ?>
                                 <th class="p-1 bg-slate-100 text-black align-middle border border-black">
@@ -384,7 +385,7 @@ require_once '../includes/header.php';
                                 // ใส่ข้อความ พักกลางวัน ทุกช่องที่เป็นเวลา 12:00
                                 if (strpos($slot['tim_range'], '12:00') === 0) { 
                                     echo '<td class="bg-slate-50 text-black text-center align-middle">';
-                                    echo '<div class="writing-vertical mx-auto text-[10px] font-bold">พักกลางวัน</div>';
+                                    echo '<div class="writing-vertical mx-auto text-[10px] font-bold text-black">พักกลางวัน</div>';
                                     echo '</td>'; 
                                     continue; 
                                 }
@@ -401,17 +402,18 @@ require_once '../includes/header.php';
                                     echo "<td class='schedule-cell p-1 align-top h-16 overflow-hidden' colspan='{$hours}'>";
                                     echo "<div class='flex flex-col h-full justify-center items-center gap-0.5 w-full'>";
                                     
-                                    echo "<span class='schedule-text-code'>{$info['sub_code']}</span>"; 
+                                    // *** จุดแก้ไขสำคัญ: เพิ่ม class text-black ในทุก span ***
+                                    echo "<span class='schedule-text-code text-black'>{$info['sub_code']}</span>"; 
                                     
                                     if ($mode == 'room') {
-                                        echo "<span class='schedule-text-info'>{$info['tea_fullname']}</span>";
-                                        echo "<span class='schedule-text-info font-bold'>{$cls_txt}</span>";
+                                        echo "<span class='schedule-text-info text-black'>{$info['tea_fullname']}</span>";
+                                        echo "<span class='schedule-text-info font-bold text-black'>{$cls_txt}</span>";
                                     } else {
-                                        echo "<span class='schedule-text-info'>{$info['roo_id']}</span>";
+                                        echo "<span class='schedule-text-info text-black'>{$info['roo_id']}</span>";
                                         if ($mode == 'teacher') {
-                                            echo "<span class='schedule-text-info font-bold'>{$cls_txt}</span>";
+                                            echo "<span class='schedule-text-info font-bold text-black'>{$cls_txt}</span>";
                                         } else {
-                                            echo "<span class='schedule-text-info'>{$info['tea_fullname']}</span>"; 
+                                            echo "<span class='schedule-text-info text-black'>{$info['tea_fullname']}</span>"; 
                                         }
                                     }
                                     echo "</div></td>";
