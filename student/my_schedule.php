@@ -118,6 +118,8 @@ foreach($raw_summary as $sub) {
     /* Grid Styles */
     .schedule-grid { border-collapse: collapse; width: 100%; margin-top: 10px; table-layout: fixed; border: 2px solid #000000 !important; }
     .schedule-grid th, .schedule-grid td { border: 1px solid #000000 !important; }
+    .schedule-grid tbody tr { height: 4rem; }
+    .schedule-grid tbody td { min-height: 4rem; height: 4rem; vertical-align: middle; }
     
     /* Summary Table Styles */
     .summary-table { width: 100%; border-collapse: collapse; font-size: 10px; border: 1px solid #000; }

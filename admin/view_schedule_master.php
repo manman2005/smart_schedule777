@@ -175,6 +175,8 @@ require_once '../includes/header.php';
     .schedule-grid th, .schedule-grid td { 
         border: 1px solid #000000 !important; 
     }
+    .schedule-grid tbody tr { height: 4rem; }
+    .schedule-grid tbody td { min-height: 4rem; height: 4rem; vertical-align: middle; }
     
     .summary-table-sm { width: 100%; border-collapse: collapse; font-size: 10px; border: 1px solid #000; }
     .summary-table-sm th, .summary-table-sm td { border: 1px solid #000 !important; padding: 4px; }

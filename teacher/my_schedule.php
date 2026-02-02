@@ -82,6 +82,8 @@ foreach ($rows as $row) {
     .schedule-grid th, .schedule-grid td { 
         border: 1px solid #000000 !important; 
     }
+    .schedule-grid tbody tr { height: 4rem; }
+    .schedule-grid tbody td { min-height: 4rem; height: 4rem; vertical-align: middle; }
     
     .day-header { 
         text-align: center; vertical-align: middle; font-weight: bold; font-size: 14px; 
