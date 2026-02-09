@@ -50,7 +50,7 @@ require_once '../includes/header.php';
             </div>
             
             <div class="text-center md:text-left flex-1">
-                <div class="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-blue-50 border border-blue-100 text-cvc-blue text-xs font-bold uppercase tracking-widest mb-3">
+                <div class="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-cvc-sky/20 border border-cvc-blue/20 text-cvc-blue text-xs font-bold uppercase tracking-widest mb-3">
                     <i class="fa-solid fa-chalkboard-user"></i> Teacher Profile
                 </div>
                 <h1 class="text-4xl font-serif font-bold text-slate-800 mb-2 leading-tight">
@@ -63,7 +63,7 @@ require_once '../includes/header.php';
                 </p>
                 
                 <div class="flex flex-wrap justify-center md:justify-start gap-4">
-                    <a href="profile.php" class="btn-cvc text-sm px-6 shadow-lg shadow-blue-500/20">
+                    <a href="profile.php" class="btn-cvc text-sm px-6 shadow-lg shadow-red-500/20">
                         <i class="fa-solid fa-pen-to-square mr-2"></i> แก้ไขข้อมูลส่วนตัว
                     </a>
                 </div>
@@ -74,7 +74,7 @@ require_once '../includes/header.php';
     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
         
         <a href="my_schedule.php" class="card-premium p-8 flex items-start gap-6 group cursor-pointer border-l-4 border-l-cvc-blue">
-            <div class="w-16 h-16 rounded-2xl bg-blue-50 text-cvc-blue flex items-center justify-center text-3xl shadow-inner group-hover:bg-cvc-blue group-hover:text-white transition duration-300">
+            <div class="w-16 h-16 rounded-2xl bg-cvc-sky/20 text-cvc-blue flex items-center justify-center text-3xl shadow-inner group-hover:bg-cvc-blue group-hover:text-white transition duration-300">
                 <i class="fa-solid fa-calendar-check"></i>
             </div>
             <div>
@@ -111,12 +111,12 @@ require_once '../includes/header.php';
             </a>
         <?php endif; ?>
 
-        <a href="student_schedule.php" class="card-premium p-8 flex items-start gap-6 group cursor-pointer border-l-4 border-l-sky-500">
-            <div class="w-16 h-16 rounded-2xl bg-sky-50 text-sky-600 flex items-center justify-center text-3xl shadow-inner group-hover:bg-sky-500 group-hover:text-white transition duration-300">
+        <a href="student_schedule.php" class="card-premium p-8 flex items-start gap-6 group cursor-pointer border-l-4 border-l-cvc-blue">
+            <div class="w-16 h-16 rounded-2xl bg-cvc-sky/20 text-cvc-blue flex items-center justify-center text-3xl shadow-inner group-hover:bg-cvc-blue group-hover:text-white transition duration-300">
                 <i class="fa-solid fa-users-viewfinder"></i>
             </div>
             <div>
-                <h3 class="text-xl font-bold text-slate-800 mb-2 group-hover:text-sky-600 transition font-serif">ค้นหาตารางเรียนนักเรียน</h3>
+                <h3 class="text-xl font-bold text-slate-800 mb-2 group-hover:text-cvc-blue transition font-serif">ค้นหาตารางเรียนนักเรียน</h3>
                 <p class="text-sm text-slate-500 font-light leading-relaxed">ดูตารางเรียนของกลุ่มเรียนต่างๆ ในฐานะครูที่ปรึกษา</p>
             </div>
         </a>

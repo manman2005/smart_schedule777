@@ -1,5 +1,5 @@
 <?php
-// admin/delete_student.php
+// admin/delete_plan.php
 require_once '../config/db.php';
 require_once '../includes/auth.php';
 checkAdmin();
@@ -8,31 +8,28 @@ if (isset($_GET['id'])) {
     $id = $_GET['id'];
     
     try {
-        // ลองลบข้อมูล
-        $stmt = $pdo->prepare("DELETE FROM students WHERE stu_id = ?");
+        // ลบรายวิชาในแผนก่อน (plan_subjects)
+        $stmt = $pdo->prepare("DELETE FROM plan_subjects WHERE pla_id = ?");
+        $stmt->execute([$id]);
+        
+        // ลบแผนการเรียน
+        $stmt = $pdo->prepare("DELETE FROM study_plans WHERE pla_id = ?");
         $stmt->execute([$id]);
 
-        // เช็คว่ามีแถวถูกลบจริงหรือไม่
         if ($stmt->rowCount() > 0) {
-            header("Location: manage_students.php?status=deleted");
+            $_SESSION['success'] = "ลบแผนการเรียนเรียบร้อยแล้ว";
         } else {
-            // ถ้า SQL ผ่านแต่ไม่มีอะไรถูกลบ (เช่น ID ผิด)
-            header("Location: manage_students.php?status=error&msg=" . urlencode("ไม่พบข้อมูลที่ต้องการลบ"));
+            $_SESSION['error'] = "ไม่พบข้อมูลที่ต้องการลบ";
         }
-        exit();
 
     } catch (PDOException $e) {
-        // ดักจับ Error กรณีลบไม่ได้ (ติด Foreign Key)
         if ($e->getCode() == '23000') {
-            $msg = "ไม่สามารถลบได้ เนื่องจากนักเรียนคนนี้มีข้อมูลการลงทะเบียนหรือข้อมูลอื่นในระบบ";
+            $_SESSION['error'] = "ไม่สามารถลบได้ เนื่องจากแผนการเรียนนี้ถูกใช้งานอยู่ในระบบ";
         } else {
-            $msg = "Database Error: " . $e->getMessage();
+            $_SESSION['error'] = "เกิดข้อผิดพลาด: " . $e->getMessage();
         }
-        header("Location: manage_students.php?status=error&msg=" . urlencode($msg));
-        exit();
     }
-} else {
-    header("Location: manage_students.php");
-    exit();
 }
+header("Location: manage_plans.php");
+exit();
 ?>

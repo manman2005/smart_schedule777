@@ -27,7 +27,6 @@
         right: 30px;
         width: 65px;
         height: 65px;
-        /* พื้นหลังสีแดงไล่เฉด */
         background: linear-gradient(135deg, #dc2626 0%, #991b1b 100%); 
         border-radius: 50%;
         box-shadow: 0 8px 20px rgba(220, 38, 38, 0.4); 
@@ -38,9 +37,7 @@
         z-index: 1050;
         transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
         border: 2px solid rgba(255,255,255,0.2);
-        position: fixed; /* ย้ำ position */
     }
-    /* Hover แล้วปุ่มขยาย + ไอคอนเด้ง */
     .ai-chat-btn:hover { 
         transform: scale(1.1); 
         box-shadow: 0 15px 30px rgba(220, 38, 38, 0.6);
@@ -48,9 +45,9 @@
     .ai-chat-btn:hover i {
         animation: bounceIcon 0.5s infinite;
     }
-    .ai-chat-btn i { font-size: 30px; color: white; transition: 0.3s; } /* ปรับขนาดไอคอนขึ้นเล็กน้อย */
+    .ai-chat-btn i { font-size: 30px; color: white; transition: 0.3s; }
 
-    /* จุดแจ้งเตือน (Ping Dot) */
+    /* Notification Dot */
     .notification-dot {
         position: absolute;
         top: 0;
@@ -88,7 +85,6 @@
         z-index: 1051;
         overflow: hidden;
         border: 1px solid rgba(0,0,0,0.05);
-        /* เรียกใช้ Animation */
         animation: slideUp 0.4s cubic-bezier(0.165, 0.84, 0.44, 1);
         font-family: 'Prompt', sans-serif;
     }
@@ -116,7 +112,6 @@
         border-top: 1px solid #eee;
     }
     
-    /* Input Group */
     .chat-input-group {
         background: #f3f4f6;
         border-radius: 25px;
@@ -154,7 +149,6 @@
     }
     .btn-send-chat:hover { background: #991b1b; transform: scale(1.1); }
 
-    /* Messages */
     .msg-item { display: flex; gap: 10px; margin-bottom: 10px; }
     .msg {
         max-width: 85%;
@@ -179,7 +173,6 @@
         box-shadow: 0 4px 10px rgba(220, 38, 38, 0.2);
     }
     
-    /* Typing Dots */
     .typing-indicator span {
         display: inline-block;
         width: 5px;
@@ -196,7 +189,6 @@
 <div class="ai-chat-btn" onclick="toggleChat()">
     <div class="notification-ping"></div>
     <div class="notification-dot"></div>
-    
     <i class="fas fa-robot"></i>
 </div>
 
@@ -239,11 +231,29 @@
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 
 <script>
+    // ตั้งชื่อ Key สำหรับเก็บประวัติ (แยกตาม User ID หรือใช้ Key กลาง)
+    // ใช้ PHP แทรก ID เพื่อให้แต่ละ User มีประวัติของตัวเอง (ถ้าไม่มี Session ให้ใช้ guest)
+    const STORAGE_KEY = 'cvc_chat_history_<?php echo isset($_SESSION['user_id']) ? $_SESSION['user_id'] : 'guest'; ?>';
+
+    $(document).ready(function() {
+        // 1. โหลดประวัติแชทเมื่อเปิดหน้าเว็บ
+        loadChatHistory();
+
+        // 2. ดักจับการกดปุ่ม Logout เพื่อล้างประวัติแชท
+        $('a[href*="logout.php"]').on('click', function() {
+            localStorage.removeItem(STORAGE_KEY);
+        });
+    });
+
     function toggleChat() {
         const chat = document.getElementById('chatWindow');
         if (chat.style.display === 'none' || chat.style.display === '') {
             chat.style.display = 'flex';
             setTimeout(() => document.getElementById('userPrompt').focus(), 100);
+            
+            // เลื่อนลงล่างสุดเสมอเมื่อเปิดแชท
+            const chatBody = document.getElementById('chatBody');
+            chatBody.scrollTop = chatBody.scrollHeight;
         } else {
             chat.style.display = 'none';
         }
@@ -259,11 +269,10 @@
         if (!message) return;
 
         input.value = '';
-        appendMessage('user', message);
+        appendMessage('user', message, true); // true = บันทึกลง Storage
         showTyping();
 
         $.ajax({
-            // ⚠️ ตรวจสอบ Path นี้ให้ถูกต้องกับโครงสร้างโฟลเดอร์ของคุณ
             url: '../ai_action.php', 
             type: 'POST',
             data: { prompt: message },
@@ -271,19 +280,20 @@
             success: function(response) {
                 removeTyping();
                 if (response.status === 'success') {
-                    appendMessage('ai', formatText(response.answer));
+                    appendMessage('ai', formatText(response.answer), true); // บันทึกคำตอบ AI ลง Storage
                 } else {
-                    appendMessage('ai', '⚠️ ' + response.message);
+                    appendMessage('ai', '⚠️ ' + response.message, false); // Error ไม่ต้องบันทึกก็ได้
                 }
             },
             error: function(xhr, status, error) {
                 removeTyping();
-                appendMessage('ai', '❌ เชื่อมต่อไม่ได้: ' + error);
+                appendMessage('ai', '❌ เชื่อมต่อไม่ได้: ' + error, false);
             }
         });
     }
 
-    function appendMessage(sender, text) {
+    // เพิ่มพารามิเตอร์ save เพื่อเลือกว่าจะบันทึกหรือไม่
+    function appendMessage(sender, text, save) {
         const chatBody = document.getElementById('chatBody');
         const div = document.createElement('div');
         div.className = 'msg-item';
@@ -301,6 +311,25 @@
         
         chatBody.appendChild(div);
         chatBody.scrollTop = chatBody.scrollHeight;
+
+        // --- บันทึกลง LocalStorage ---
+        if (save) {
+            let history = localStorage.getItem(STORAGE_KEY);
+            let messages = history ? JSON.parse(history) : [];
+            messages.push({ sender: sender, text: text });
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(messages));
+        }
+    }
+
+    function loadChatHistory() {
+        const history = localStorage.getItem(STORAGE_KEY);
+        if (history) {
+            const messages = JSON.parse(history);
+            messages.forEach(msg => {
+                // เรียก appendMessage แบบ save=false (เพราะโหลดจากความจำ ไม่ต้องบันทึกซ้ำ)
+                appendMessage(msg.sender, msg.text, false);
+            });
+        }
     }
 
     function showTyping() {
@@ -331,3 +360,10 @@
         return formatted;
     }
 </script>
+
+<?php 
+// ดักจับกรณี Session หมดอายุแล้ว Redirect มาหน้า Login ให้เคลียร์แชทด้วย (เผื่อกรณี Logout อัตโนมัติ)
+if (!isset($_SESSION['user_id'])) {
+    echo "<script>localStorage.removeItem('cvc_chat_history_guest');</script>"; 
+}
+?>

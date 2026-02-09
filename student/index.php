@@ -14,7 +14,7 @@ require_once '../includes/header.php';
 
 <div class="max-w-5xl mx-auto">
     
-    <div class="relative rounded-[2.5rem] bg-gradient-to-r from-cvc-blue via-blue-800 to-cvc-blue p-1 shadow-2xl mb-10 overflow-hidden">
+    <div class="relative rounded-[2.5rem] bg-gradient-to-r from-cvc-blue via-cvc-navy to-cvc-blue p-1 shadow-2xl mb-10 overflow-hidden">
         <div class="absolute inset-0 bg-white/10 backdrop-blur-sm"></div>
         <div class="absolute top-0 right-0 w-64 h-64 bg-cvc-gold/20 rounded-full blur-[80px]"></div>
 
@@ -52,7 +52,7 @@ require_once '../includes/header.php';
     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
         <a href="my_schedule.php" class="group card-premium p-8 flex flex-col justify-between min-h-[200px] hover:border-cvc-blue/30 transition">
             <div class="flex justify-between items-start">
-                <div class="w-14 h-14 rounded-2xl bg-blue-50 text-cvc-blue flex items-center justify-center text-2xl group-hover:scale-110 transition duration-500 shadow-sm">
+                <div class="w-14 h-14 rounded-2xl bg-cvc-sky/20 text-cvc-blue flex items-center justify-center text-2xl group-hover:scale-110 transition duration-500 shadow-sm">
                     <i class="fa-solid fa-table-list"></i>
                 </div>
                 <div class="w-8 h-8 rounded-full border border-slate-200 flex items-center justify-center text-slate-300 group-hover:bg-cvc-blue group-hover:text-white group-hover:border-transparent transition">

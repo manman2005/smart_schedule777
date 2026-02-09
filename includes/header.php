@@ -14,7 +14,9 @@ if (session_status() === PHP_SESSION_NONE) {
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css">
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <?php include_once __DIR__ . '/notifications.php'; ?>
     
     <script>
         tailwind.config = {
@@ -55,7 +57,178 @@ if (session_status() === PHP_SESSION_NONE) {
         ::-webkit-scrollbar-track { background: #f1f1f1; }
         ::-webkit-scrollbar-thumb { background: #ccc; border-radius: 4px; }
         ::-webkit-scrollbar-thumb:hover { background: #999; }
+        .btn-base { display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem; font-weight: 700; border-radius: 9999px; padding: 0.6rem 1rem; transition: all 0.2s ease; }
+        .btn-cvc { display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem; font-weight: 700; border-radius: 9999px; padding: 0.6rem 1rem; background: linear-gradient(135deg, #b91c1c 0%, #450a0a 100%); color: #ffffff; box-shadow: 0 6px 16px rgba(185, 28, 28, 0.25); transition: all 0.2s ease; }
+        .btn-cvc:hover { transform: translateY(-1px); box-shadow: 0 10px 24px rgba(185, 28, 28, 0.35); }
+        .btn-soft { display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem; font-weight: 700; border-radius: 9999px; padding: 0.6rem 1rem; background: #ffffff; color: #334155; border: 1px solid rgba(0,0,0,0.08); box-shadow: 0 4px 10px rgba(0,0,0,0.06); transition: all 0.2s ease; }
+        .btn-soft:hover { border-color: rgba(185,28,28,0.35); color: #b91c1c; }
+        .btn-outline { display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem; font-weight: 700; border-radius: 9999px; padding: 0.5rem 0.9rem; background: transparent; color: #b91c1c; border: 2px solid #b91c1c; transition: all 0.2s ease; }
+        .btn-outline:hover { background: rgba(185,28,28,0.08); }
+        .btn-icon { width: 2.5rem; height: 2.5rem; border-radius: 9999px; display: inline-flex; align-items: center; justify-content: center; }
+        button { border-radius: 9999px !important; }
+        a[class*="px-"][class*="py-"] { border-radius: 9999px; }
+        .field-modern { border-radius: 14px; border: 2px solid rgba(51,65,85,0.25); background: #ffffff; color: #334155; padding: 0.5rem 0.9rem; min-height: 42px; box-shadow: inset 0 1px 2px rgba(0,0,0,0.04), 0 2px 10px rgba(0,0,0,0.04); outline: none; transition: all 0.2s ease; }
+        .field-modern:focus { border-color: #b91c1c; box-shadow: inset 0 1px 2px rgba(0,0,0,0.04), 0 0 0 4px rgba(185,28,28,0.12); }
+        .field-modern:hover { border-color: rgba(185,28,28,0.35); }
+        .field-modern::placeholder { color: #94a3b8; }
+        .field-modern[readonly] { background-color: #f8fafc; color: #64748b; }
+        .field-modern:disabled { background-color: #f8fafc; color: #94a3b8; border-color: rgba(51,65,85,0.15); cursor: not-allowed; opacity: 0.85; }
+        textarea.field-modern { min-height: 96px; resize: vertical; }
+        select.field-modern { -webkit-appearance: none; appearance: none; background-image: url("data:image/svg+xml;charset=UTF-8,%3Csvg width='16' height='16' viewBox='0 0 24 24' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M6 9l6 6 6-6' stroke='%23450a0a' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 0.75rem center; background-size: 16px; padding-right: 2rem; }
+        select.field-modern:focus { background-image: url("data:image/svg+xml;charset=UTF-8,%3Csvg width='16' height='16' viewBox='0 0 24 24' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M6 9l6 6 6-6' stroke='%23b91c1c' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E"); }
+        select.field-modern:disabled { background-color: #f8fafc; color: #94a3b8; border-color: rgba(51,65,85,0.15); cursor: not-allowed; opacity: 0.85; }
+        .chip-select { border-radius: 14px; border: 2px solid rgba(51,65,85,0.25); background: #ffffff; color: #334155; padding: 0.5rem 0.9rem; font-weight: 700; box-shadow: 0 6px 14px rgba(0,0,0,0.06); transition: all 0.2s ease; }
+        .chip-select:focus { border-color: #b91c1c; box-shadow: 0 10px 20px rgba(185,28,28,0.12); }
+        .ps { position: relative; width: 100%; }
+        .ps-native { position: absolute; opacity: 0; pointer-events: none; height: 0; width: 0; }
+        .ps-control { width: 100%; display: flex; align-items: center; justify-content: space-between; }
+        .ps-value { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 700; color: #334155; }
+        .ps-arrow { margin-left: 0.5rem; width: 18px; height: 18px; background-image: url("data:image/svg+xml;charset=UTF-8,%3Csvg width='18' height='18' viewBox='0 0 24 24' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M6 9l6 6 6-6' stroke='%23450a0a' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: center; background-size: 18px; transition: transform 0.2s ease; }
+        .ps-open .ps-arrow { transform: rotate(180deg); }
+        .ps-menu { position: fixed; background: #ffffff; border-radius: 14px; border: 1px solid rgba(51,65,85,0.15); box-shadow: 0 12px 28px rgba(0,0,0,0.12); padding: 6px; z-index: 9999; display: none; }
+        .ps-list { max-height: 260px; overflow: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; }
+        .ps-option { padding: 8px 10px; border-radius: 10px; font-weight: 700; color: #334155; cursor: pointer; }
+        .ps-option:hover { background: rgba(185,28,28,0.08); color: #b91c1c; }
+        .ps-option.ps-selected { background: rgba(185,28,28,0.14); color: #b91c1c; }
     </style>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const applyPremium = (el) => {
+                if (!el.classList.contains('field-modern')) el.classList.add('field-modern');
+            };
+            document.querySelectorAll('select:not(.no-premium)').forEach(applyPremium);
+            const disallowed = ['checkbox','radio','file','hidden','submit','button','range','color','image','reset'];
+            document.querySelectorAll('input:not(.no-premium), textarea:not(.no-premium)').forEach(el => {
+                if (el.tagName.toLowerCase() === 'textarea') { applyPremium(el); return; }
+                const type = (el.getAttribute('type') || 'text').toLowerCase();
+                if (disallowed.includes(type)) return;
+                applyPremium(el);
+            });
+        });
+    </script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const isTouch = navigator.maxTouchPoints > 0;
+            if (isTouch) return;
+            document.querySelectorAll('select:not(.no-premium)').forEach(sel => {
+                if (sel.multiple) return;
+                if (sel.dataset.premiumSelectInit === '1') return;
+                sel.dataset.premiumSelectInit = '1';
+                const wrapper = document.createElement('div');
+                wrapper.className = 'ps';
+                sel.parentNode.insertBefore(wrapper, sel);
+                wrapper.appendChild(sel);
+                sel.classList.add('ps-native');
+                sel.classList.remove('field-modern');
+                const control = document.createElement('button');
+                control.type = 'button';
+                control.className = 'ps-control field-modern';
+                control.disabled = sel.disabled;
+                if (sel.disabled) { control.classList.add('opacity-60','cursor-not-allowed'); }
+                const value = document.createElement('span');
+                value.className = 'ps-value';
+                value.textContent = sel.options[sel.selectedIndex]?.text || '';
+                const arrow = document.createElement('span');
+                arrow.className = 'ps-arrow';
+                control.appendChild(value);
+                control.appendChild(arrow);
+                wrapper.appendChild(control);
+                const menu = document.createElement('div');
+                menu.className = 'ps-menu';
+                const list = document.createElement('ul');
+                list.className = 'ps-list';
+                menu.appendChild(list);
+                document.body.appendChild(menu);
+                function build() {
+                    list.innerHTML = '';
+                    Array.from(sel.options).forEach((opt, idx) => {
+                        const li = document.createElement('li');
+                        li.className = 'ps-option' + (opt.selected ? ' ps-selected' : '');
+                        li.textContent = opt.text;
+                        li.dataset.value = opt.value;
+                        li.addEventListener('click', () => {
+                            sel.selectedIndex = idx;
+                            value.textContent = opt.text;
+                            sel.dispatchEvent(new Event('input', { bubbles: true }));
+                            sel.dispatchEvent(new Event('change', { bubbles: true }));
+                            close();
+                        });
+                        list.appendChild(li);
+                    });
+                }
+                build();
+                const observer = new MutationObserver(() => {
+                    control.disabled = sel.disabled;
+                    control.classList.toggle('cursor-not-allowed', sel.disabled);
+                    control.classList.toggle('opacity-60', sel.disabled);
+                    const prevText = value.textContent;
+                    build();
+                    value.textContent = sel.options[sel.selectedIndex]?.text || prevText || '';
+                    if (wrapper.classList.contains('ps-open')) reposition();
+                });
+                observer.observe(sel, { childList: true, attributes: true });
+                function reposition() {
+                    const rect = control.getBoundingClientRect();
+                    const spaceBelow = window.innerHeight - rect.bottom - 16;
+                    const maxH = Math.max(160, Math.min(300, spaceBelow));
+                    menu.style.width = `${rect.width}px`;
+                    menu.style.left = `${rect.left}px`;
+                    menu.style.maxHeight = `${maxH}px`;
+                    list.style.maxHeight = `${maxH - 12}px`;
+                    const desiredTop = rect.bottom + 6;
+                    const menuHeight = menu.offsetHeight || maxH;
+                    if (spaceBelow < 160) {
+                        menu.style.top = `${Math.max(12, rect.top - menuHeight - 6)}px`;
+                    } else {
+                        menu.style.top = `${desiredTop}px`;
+                    }
+                }
+                function open() {
+                    if (sel.disabled || control.disabled) return;
+                    wrapper.classList.add('ps-open');
+                    menu.style.display = 'block';
+                    reposition();
+                    const selected = list.querySelector('.ps-selected');
+                    if (selected) selected.scrollIntoView({ block: 'nearest' });
+                }
+                function close() {
+                    wrapper.classList.remove('ps-open');
+                    menu.style.display = 'none';
+                }
+                control.addEventListener('click', () => {
+                    if (wrapper.classList.contains('ps-open')) close(); else open();
+                });
+                document.addEventListener('click', (e) => {
+                    if (!wrapper.contains(e.target)) close();
+                });
+                window.addEventListener('scroll', () => { if (wrapper.classList.contains('ps-open')) reposition(); }, true);
+                window.addEventListener('resize', () => { if (wrapper.classList.contains('ps-open')) reposition(); });
+                control.addEventListener('keydown', (e) => {
+                    const opts = Array.from(list.querySelectorAll('.ps-option'));
+                    let idx = sel.selectedIndex;
+                    if (e.key === 'ArrowDown') { e.preventDefault(); idx = Math.min(idx + 1, opts.length - 1); }
+                    if (e.key === 'ArrowUp') { e.preventDefault(); idx = Math.max(idx - 1, 0); }
+                    if (e.key === 'Enter') { e.preventDefault(); close(); return; }
+                    if (e.key === 'Escape') { e.preventDefault(); close(); return; }
+                    if (idx !== sel.selectedIndex) {
+                        sel.selectedIndex = idx;
+                        value.textContent = sel.options[idx].text;
+                        sel.dispatchEvent(new Event('input', { bubbles: true }));
+                        sel.dispatchEvent(new Event('change', { bubbles: true }));
+                        open();
+                    }
+                });
+                const sync = () => {
+                    value.textContent = sel.options[sel.selectedIndex]?.text || '';
+                    Array.from(list.children).forEach((li, i) => {
+                        li.classList.toggle('ps-selected', i === sel.selectedIndex);
+                    });
+                };
+                sel.addEventListener('change', sync);
+                sel.addEventListener('input', sync);
+            });
+        });
+    </script>
 </head>
 <body>
 

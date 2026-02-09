@@ -48,7 +48,7 @@ require_once '../includes/header.php';
     </div>
 
     <div class="card-premium p-10 relative overflow-hidden">
-        <div class="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-400 via-sky-500 to-blue-600"></div>
+        <div class="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-cvc-blue via-cvc-sky to-cvc-blue"></div>
 
         <?php if($message): ?>
             <div class="mb-6 p-4 rounded-xl text-center font-bold <?php echo $message_type=='success'?'bg-emerald-50 text-emerald-600 border border-emerald-100':'bg-red-50 text-red-600 border border-red-100'; ?>">
@@ -59,7 +59,7 @@ require_once '../includes/header.php';
         <form action="" method="POST" enctype="multipart/form-data" class="space-y-8">
             <div class="flex flex-col items-center">
                 <div class="relative group cursor-pointer">
-                    <div class="w-32 h-32 rounded-full p-1 bg-gradient-to-tr from-blue-500 to-sky-300 shadow-lg">
+                    <div class="w-32 h-32 rounded-full p-1 bg-gradient-to-tr from-cvc-blue to-cvc-sky shadow-lg">
                         <div class="w-full h-full rounded-full bg-white overflow-hidden flex items-center justify-center">
                             <?php if (!empty($student['stu_img'])): ?>
                                 <img src="../uploads/students/<?php echo $student['stu_img']; ?>" id="preview" class="w-full h-full object-cover">

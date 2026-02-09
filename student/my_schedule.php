@@ -157,7 +157,7 @@ foreach($raw_summary as $sub) {
 
     <div class="card-premium p-4 flex flex-col md:flex-row justify-between items-center gap-4 no-print">
         <div class="flex items-center gap-3">
-            <div class="w-10 h-10 rounded-full bg-indigo-50 flex items-center justify-center text-indigo-600">
+            <div class="w-10 h-10 rounded-full bg-cvc-sky/20 flex items-center justify-center text-cvc-blue">
                 <i class="fa-solid fa-calendar-days"></i>
             </div>
             <div>
@@ -185,7 +185,7 @@ foreach($raw_summary as $sub) {
                 </select>
             </form>
             <div class="h-9 w-px bg-slate-200 mx-1 hidden md:block"></div>
-            <button onclick="window.print()" class="bg-cvc-blue text-white px-4 py-2 rounded-lg hover:bg-blue-800 text-sm font-bold shadow-md"><i class="fa-solid fa-print"></i></button>
+            <button onclick="window.print()" class="btn-cvc text-sm font-bold"><i class="fa-solid fa-print"></i></button>
             <button onclick="exportPDF()" class="bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-600 text-sm font-bold shadow-md"><i class="fa-solid fa-file-pdf"></i></button>
         </div>
     </div>
@@ -281,7 +281,7 @@ foreach($raw_summary as $sub) {
                                 <th class="p-1 w-[40px] bg-slate-200 text-black text-center align-middle"><div class="writing-vertical mx-auto font-bold text-[10px] leading-tight py-1">พัก</div></th>
                             <?php else: ?>
                                 <th class="p-1 bg-slate-100 text-black align-middle border border-black">
-                                    <div class="font-bold text-xs text-indigo-800 mb-0.5">คาบที่ <?php echo $counter++; ?></div>
+                                    <div class="font-bold text-xs text-cvc-navy mb-0.5">คาบที่ <?php echo $counter++; ?></div>
                                     <div class="text-[9px] text-black font-mono inline-block px-1"><?php echo str_replace(':', '.', substr($slot['tim_range'], 0, 11)); ?></div>
                                 </th>
                             <?php endif; endforeach; ?>

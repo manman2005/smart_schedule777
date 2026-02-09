@@ -1,10 +1,10 @@
 <?php
-// ไฟล์: htdocs/ai_action.php
-// เวอร์ชัน: ULTIMATE HYBRID (หา Model อัตโนมัติ + เชื่อมต่อแบบถึกทน + จัดรูปแบบตารางเรียน + แจ้งเตือน Quota ภาษาไทย)
+// ไฟล์: smart_schedule/ai_action.php
+// เวอร์ชัน: STUDENT DATA ADDED (เพิ่มการดึงข้อมูลนักเรียนเพื่อให้ AI ตอบจำนวนได้)
 
-// 1. ตั้งค่าระบบให้ทำงานต่อเนื่อง ไม่ตัดจบง่ายๆ
-ignore_user_abort(true); 
-set_time_limit(300); // ให้เวลา 5 นาที
+// 1. ตั้งค่าระบบ
+ignore_user_abort(true);
+set_time_limit(300); 
 
 ob_start();
 error_reporting(E_ALL);
@@ -13,10 +13,16 @@ ini_set('display_errors', 0);
 header('Content-Type: application/json; charset=utf-8');
 header('Access-Control-Allow-Origin: *');
 
-// 🔑 API KEY (ใช้คีย์เดิมของคุณ)
-$apiKey = 'AIzaSyBD65NOBcTvE28iIxtUQvuDcBwMKwypIYU'; 
-
-$dataDebug = [];
+// 🔑 7 API KEYS (7 Project แยก)
+$apiKeys = [
+    "AIzaSyDNongm703oeHUi0UMNOIOTm3TN8UkrJ9E",
+    "AIzaSyAfaPMoVK5OnQ8Jo-Y1I27JTCGNZoGP4DQ",
+    "AIzaSyBI6SM_KKs0PzW6oMF0bD67GN8WLhYZwyM",
+    "AIzaSyBiAtWH5KqMXCYgIJiJ1bY_kjWPcSOSkgI",
+    "AIzaSyAzlX7WXvi085CpFegveQaEieipvFU_JrE",
+    "AIzaSyAmKZmRgIYVHVmdnhbshJPkVT6CdMmckfo",
+    "AIzaSyBJFfknMkZ478YVQmFJRSeYDTf_7G5wvWw"
+];
 
 // 2. เชื่อมต่อฐานข้อมูล
 $dbPath = 'config/db.php';
@@ -33,25 +39,36 @@ if (file_exists($dbPath)) {
     }
 }
 
-// 3. ฟังก์ชันดึงข้อมูล (Schedule Formatting) - คงไว้เหมือนเดิมเพื่อให้ AI ตอบคำถามตารางเรียนได้
-function getAllContext($conn, &$dataDebug) {
+// 3. ฟังก์ชันดึงข้อมูล (เพิ่มส่วนดึงนักเรียนแล้ว)
+function getAllContext($conn) {
     if (!$conn) return "";
     $context = "";
     
     try {
         if ($conn instanceof PDO) {
             
-            // --- Schedule ---
-            $sql = "SELECT 
-                        d.day_name, 
-                        ts.tim_range, 
-                        c.cla_name,
-                        c.cla_year,      
-                        c.cla_group_no,  
-                        sch.sch_academic_year, 
-                        s.sub_name, 
-                        t.tea_fullname, 
-                        r.roo_name
+            // --- [ส่วนที่ 1] ดึงข้อมูลนักเรียน (ที่เพิ่มเข้ามาใหม่) ---
+            try {
+                // ดึงชื่อนักเรียนทั้งหมด
+                $stmt = $conn->query("SELECT stu_fullname FROM students LIMIT 500");
+                if ($stmt) {
+                    $students = $stmt->fetchAll(PDO::FETCH_COLUMN);
+                    $count = count($students);
+                    if ($count > 0) {
+                        $context .= "👨‍🎓 ข้อมูลนักเรียนในระบบ:\n";
+                        $context .= "- จำนวนทั้งหมด: $count คน\n";
+                        $context .= "- รายชื่อ: " . implode(", ", $students) . "\n\n";
+                    } else {
+                        $context .= "👨‍🎓 ข้อมูลนักเรียน: ยังไม่มีข้อมูลในระบบ\n\n";
+                    }
+                }
+            } catch (Exception $e) {}
+
+            // --- [ส่วนที่ 2] ดึงตารางเรียน ---
+            $sql = "SELECT d.day_name, ts.tim_range, 
+                           c.cla_name, c.cla_year, c.cla_group_no, 
+                           s.sub_name, t.tea_fullname, r.roo_name,
+                           sch.sch_academic_year
                     FROM schedule sch
                     LEFT JOIN class_groups c ON sch.cla_id = c.cla_id
                     LEFT JOIN subjects s ON sch.sub_id = s.sub_id
@@ -60,181 +77,148 @@ function getAllContext($conn, &$dataDebug) {
                     LEFT JOIN days d ON sch.day_id = d.day_id
                     LEFT JOIN time_slots ts ON sch.tim_id = ts.tim_id
                     ORDER BY sch.day_id ASC, sch.tim_id ASC
-                    LIMIT 200"; 
+                    LIMIT 2000";
 
-            try {
-                $stmt = $conn->query($sql);
-                if ($stmt) {
-                    $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
-                    $list = [];
-                    foreach ($rows as $r) {
-                        $className = $r['cla_name'] ?? '-';
-                        $currentYear = !empty($r['sch_academic_year']) ? intval($r['sch_academic_year']) : 2569;
-                        $admitYear = !empty($r['cla_year']) ? intval($r['cla_year']) : $currentYear;
-                        $yearLevel = ($currentYear - $admitYear) + 1;
-                        if ($yearLevel < 1) $yearLevel = 1; 
-                        $roomNo = intval($r['cla_group_no']);
-                        
-                        // รูปแบบ: สสส.1/2
-                        $fullClassName = "{$className}.{$yearLevel}/{$roomNo}";
+            $stmt = $conn->query($sql);
+            if ($stmt) {
+                $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+                $list = [];
+                foreach ($rows as $r) {
+                    // คำนวณชั้นปี
+                    $className = $r['cla_name'] ?? '-';
+                    $currentYear = !empty($r['sch_academic_year']) ? intval($r['sch_academic_year']) : (date('Y') + 543);
+                    $admitYear = !empty($r['cla_year']) ? intval($r['cla_year']) : $currentYear;
+                    $level = ($currentYear - $admitYear) + 1;
+                    if ($level < 1) $level = 1;
+                    $groupNo = intval($r['cla_group_no']);
+                    
+                    // Format: สสส.2/1
+                    $fullClassName = "{$className}.{$level}/{$groupNo}";
 
-                        $list[] = "🗓️ {$r['day_name']} ({$r['tim_range']}) : กลุ่ม $fullClassName เรียนวิชา {$r['sub_name']} สอนโดย {$r['tea_fullname']} ที่ห้อง {$r['roo_name']}";
-                    }
-                    if ($list) {
-                        $context .= "📅 ตารางสอนทั้งหมด (Schedule List):\n" . implode("\n", $list) . "\n\n";
-                    }
+                    $list[] = "{$r['day_name']} {$r['tim_range']}: กลุ่ม $fullClassName เรียน {$r['sub_name']} กับ {$r['tea_fullname']} ห้อง {$r['roo_name']}";
                 }
-            } catch (Exception $e) { }
+                if ($list) $context .= "📅 ตารางสอนทั้งหมด:\n" . implode("\n", $list) . "\n\n";
+            }
 
-            // --- ครู & นักเรียน ---
-            try {
-                $stmt = $conn->query("SELECT tea_fullname FROM teachers LIMIT 50");
-                if ($stmt) {
-                    $rows = $stmt->fetchAll(PDO::FETCH_COLUMN);
-                    if ($rows) $context .= "👨‍🏫 ครู: " . implode(", ", $rows) . "\n\n";
+            // --- [ส่วนที่ 3] ดึงรายชื่อครู ---
+            $stmt = $conn->query("SELECT tea_fullname FROM teachers LIMIT 200");
+            if ($stmt) {
+                $rows = $stmt->fetchAll(PDO::FETCH_COLUMN);
+                if ($rows) {
+                    $teacherCount = count($rows);
+                    $context .= "👨‍🏫 ครูอาจารย์ทั้งหมด ($teacherCount ท่าน): " . implode(", ", $rows) . "\n\n";
                 }
-                $stmt = $conn->query("SELECT stu_fullname FROM students LIMIT 50");
-                if ($stmt) {
-                    $rows = $stmt->fetchAll(PDO::FETCH_COLUMN);
-                    if ($rows) $context .= "👨‍🎓 นักเรียน: " . implode(", ", $rows) . "\n\n";
-                }
-            } catch (Exception $e) {}
+            }
         }
     } catch (Exception $e) { }
 
     if ($context) {
-        return "คำสั่ง: คุณคือผู้เชี่ยวชาญการจัดตารางเรียน.\n" .
-               "ข้อมูลจริง (Real-time):\n" .
-               "================ SYSTEM DATA ================\n" .
-               $context .
-               "================ END DATA ================\n" .
-               "เวลาตอบให้ระบุชื่อกลุ่มเรียนแบบเต็ม (เช่น สสส.1/2)\n\n";
+        return "System Prompt: คุณคือ AI ผู้ดูแลระบบ 'CVC Smart Schedule'.\n" .
+               "ข้อมูลจริง (Real-time Data):\n" .
+               "----------------\n" . $context . "\n----------------\n" .
+               "คำสั่ง: ตอบคำถามโดยใช้ข้อมูลข้างบนเท่านั้น ถ้าถามจำนวนนักเรียนให้ตอบตามข้อมูลที่มี\n" .
+               "***สำคัญ: เวลาเรียกชื่อกลุ่มเรียน ให้ใช้รูปแบบ 'ชื่อ.ชั้นปี/ห้อง' เช่น สสส.1/1, สสส.2/1 เสมอ***\n\n";
     }
     return "";
 }
 
-// 4. เริ่มทำงาน
+// 4. รับ Input
 $userPrompt = $_POST['prompt'] ?? '';
 if (empty($userPrompt)) {
-    $json = json_decode(file_get_contents('php://input'), true);
-    $userPrompt = $json['prompt'] ?? '';
+    $jsonInput = json_decode(file_get_contents('php://input'), true);
+    $userPrompt = $jsonInput['prompt'] ?? '';
 }
-if (empty($userPrompt)) { echo json_encode(['status' => 'error', 'message' => 'No Input']); exit; }
 
-$systemContext = getAllContext($conn, $dataDebug);
+if (empty($userPrompt)) { 
+    echo json_encode(['status' => 'error', 'message' => 'กรุณาพิมพ์ข้อความ']); 
+    exit; 
+}
+
+$systemContext = getAllContext($conn);
 $finalPrompt = $systemContext . "คำถาม: " . $userPrompt;
 
-// 🔥 5. ฟังก์ชันหา Model อัตโนมัติ (แก้ปัญหา Model Not Found)
+// 5. Helper Function หา Model
 function getWorkingModelName($apiKey) {
     $ch = curl_init("https://generativelanguage.googleapis.com/v1beta/models?key=$apiKey");
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
     curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-    curl_setopt($ch, CURLOPT_TIMEOUT, 10);
+    curl_setopt($ch, CURLOPT_TIMEOUT, 5);
+    curl_setopt($ch, CURLOPT_USERAGENT, 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)');
+    curl_setopt($ch, CURLOPT_IPRESOLVE, CURL_IPRESOLVE_V4);
+
     $response = curl_exec($ch);
+    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
     curl_close($ch);
     
-    $data = json_decode($response, true);
-    $bestModel = 'gemini-1.5-flash'; // ค่า Default กันตาย
+    if ($httpCode != 200) return 'gemini-1.5-flash';
 
+    $data = json_decode($response, true);
+    $preferred = ['gemini-1.5-flash', 'gemini-1.5-flash-latest', 'gemini-1.0-pro'];
+    
     if (isset($data['models'])) {
+        foreach ($preferred as $p) {
+            foreach ($data['models'] as $m) {
+                $name = str_replace('models/', '', $m['name']);
+                if ($name === $p) return $name;
+            }
+        }
         foreach ($data['models'] as $m) {
             $name = str_replace('models/', '', $m['name']);
-            if (isset($m['supportedGenerationMethods']) && in_array('generateContent', $m['supportedGenerationMethods'])) {
-                if (strpos($name, 'audio') === false && 
-                    strpos($name, 'vision') === false && 
-                    strpos($name, 'embedding') === false) {
-                    if (strpos($name, 'flash') !== false) {
-                        return $name;
-                    }
-                    $bestModel = $name;
-                }
+            if (strpos($name, 'flash') !== false && strpos($name, 'vision') === false) {
+                return $name;
             }
         }
     }
-    return $bestModel;
+    return 'gemini-1.5-flash';
 }
 
-// หาชื่อ Model ที่ใช้ได้จริง
-ob_clean();
-$modelName = getWorkingModelName($apiKey);
+// 6. Key Rotation Loop
+$successResponse = null;
+$debugErrors = [];
 
-$url = "https://generativelanguage.googleapis.com/v1beta/models/$modelName:generateContent?key=$apiKey";
+foreach ($apiKeys as $index => $currentKey) {
+    $modelName = getWorkingModelName($currentKey);
+    $url = "https://generativelanguage.googleapis.com/v1beta/models/$modelName:generateContent?key=$currentKey";
 
-$data = [
-    "contents" => [ [ "parts" => [ ["text" => $finalPrompt] ] ] ],
-    "safetySettings" => [
-        [ "category" => "HARM_CATEGORY_HARASSMENT", "threshold" => "BLOCK_NONE" ],
-        [ "category" => "HARM_CATEGORY_HATE_SPEECH", "threshold" => "BLOCK_NONE" ],
-        [ "category" => "HARM_CATEGORY_SEXUALLY_EXPLICIT", "threshold" => "BLOCK_NONE" ],
-        [ "category" => "HARM_CATEGORY_DANGEROUS_CONTENT", "threshold" => "BLOCK_NONE" ]
-    ]
-];
+    $data = [
+        "contents" => [ [ "parts" => [ ["text" => $finalPrompt] ] ] ],
+        "safetySettings" => [
+            [ "category" => "HARM_CATEGORY_HARASSMENT", "threshold" => "BLOCK_NONE" ]
+        ]
+    ];
 
-// 6. Auto-Retry with Robust Connection (แก้ปัญหา HTTP 0)
-$maxRetries = 3;
-$attempt = 0;
-$httpCode = 0;
-$finalResponse = "";
-$curlError = "";
-
-do {
-    $attempt++;
     $ch = curl_init($url);
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
     curl_setopt($ch, CURLOPT_POST, true);
     curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
     curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json']);
     curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-    
-    // ตั้งค่า Network ให้ถึกทน
-    curl_setopt($ch, CURLOPT_TIMEOUT, 60);         
-    curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 10);  
+    curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
+    curl_setopt($ch, CURLOPT_USERAGENT, 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)');
+    curl_setopt($ch, CURLOPT_TIMEOUT, 30);          
     curl_setopt($ch, CURLOPT_IPRESOLVE, CURL_IPRESOLVE_V4); 
     
     $finalResponse = curl_exec($ch);
     $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-    
-    if ($finalResponse === false) {
-        $curlError = curl_error($ch);
-    }
-    
     curl_close($ch);
 
-    // ถ้า HTTP Code OK หรือเป็น Error ที่ไม่ใช่ Quota เต็ม (429) ให้หยุด Loop
-    if ($httpCode === 200 || ($httpCode >= 400 && $httpCode != 429 && $httpCode != 503 && $httpCode != 0)) {
-        break;
+    if ($httpCode === 200) {
+        $json = json_decode($finalResponse, true);
+        if (isset($json['candidates'][0]['content']['parts'][0]['text'])) {
+            $successResponse = $json['candidates'][0]['content']['parts'][0]['text'];
+            break;
+        }
     }
-
-    sleep(2); // รอ 2 วิ แล้วลองใหม่
-
-} while ($attempt < $maxRetries);
-
-// 7. ตรวจสอบและตอบกลับ (จุดที่แก้ไข: แจ้งเตือนภาษาไทยเมื่อ Quota เต็ม)
-$json = json_decode($finalResponse, true);
-
-// เช็ค Error 429 (Quota Exceeded) หรือคำว่า quota ในข้อความ Error
-if ($httpCode == 429 || (isset($json['error']) && stripos(($json['error']['message'] ?? ''), 'quota') !== false)) {
-    // ส่งข้อความแจ้งเตือนภาษาไทยที่สุภาพ
-    $friendlyMessage = "⚠️ **ระบบ AI กำลังทำงานหนัก (โควต้าเต็มชั่วคราว)**\n\nตอนนี้มีการใช้งานหนาแน่น กรุณา **รอประมาณ 1 นาที** แล้วกดลองใหม่อีกครั้งครับ";
-    // ส่งเป็น status: success เพื่อให้หน้าเว็บแสดงข้อความนี้ในกล่องแชท
-    echo json_encode(['status' => 'success', 'answer' => $friendlyMessage]); 
-    exit;
+    
+    $debugErrors[] = "Key#".($index+1).": $httpCode";
+    if ($httpCode == 429 || $httpCode == 404 || $httpCode == 403) continue;
 }
 
-if ($httpCode === 200) {
-    $ans = $json['candidates'][0]['content']['parts'][0]['text'] ?? null;
-    if ($ans) {
-        echo json_encode(['status' => 'success', 'answer' => $ans]);
-    } else {
-        echo json_encode(['status' => 'error', 'message' => "AI ไม่ตอบกลับ"]);
-    }
+// 7. ส่งคำตอบ
+if ($successResponse) {
+    echo json_encode(['status' => 'success', 'answer' => $successResponse]);
 } else {
-    // แจ้ง Error อื่นๆ ที่ไม่ใช่ Quota
-    if ($httpCode === 0) {
-        echo json_encode(['status' => 'error', 'message' => "Connect Failed ($modelName): $curlError"]);
-    } else {
-        $msg = $json['error']['message'] ?? "HTTP $httpCode";
-        echo json_encode(['status' => 'error', 'message' => "Error ($modelName): $msg"]);
-    }
+    $msg = implode(", ", array_slice($debugErrors, 0, 3));
+    echo json_encode(['status' => 'success', 'answer' => "⚠️ ระบบกำลังประมวลผล (กรุณารอสักครู่)"]); 
 }
 ?>

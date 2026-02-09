@@ -123,7 +123,7 @@ require_once '../includes/header.php';
                                     <a href="manage_student_form.php?id=<?php echo $stu['stu_id']; ?>" class="w-8 h-8 rounded-lg bg-white border border-slate-200 text-amber-500 hover:border-amber-500 hover:bg-amber-50 flex items-center justify-center transition shadow-sm">
                                         <i class="fa-solid fa-pen-to-square text-xs"></i>
                                     </a>
-                                    <a href="delete_student.php?id=<?php echo $stu['stu_id']; ?>" onclick="return confirm('ยืนยันลบ?');" class="w-8 h-8 rounded-lg bg-white border border-slate-200 text-red-500 hover:border-red-500 hover:bg-red-50 flex items-center justify-center transition shadow-sm">
+                                    <a href="javascript:void(0)" onclick="confirmDelete('delete_student.php?id=<?php echo $stu['stu_id']; ?>', '<?php echo addslashes($stu['stu_fullname']); ?>')" class="w-8 h-8 rounded-lg bg-white border border-slate-200 text-red-500 hover:border-red-500 hover:bg-red-50 flex items-center justify-center transition shadow-sm">
                                         <i class="fa-solid fa-trash-can text-xs"></i>
                                     </a>
                                 </div>

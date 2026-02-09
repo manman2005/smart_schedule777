@@ -97,7 +97,7 @@ require_once '../includes/header.php';
                             <td class="px-6 py-4 text-right">
                                 <div class="flex justify-end gap-2 opacity-60 group-hover:opacity-100 transition">
                                     <a href="manage_class_group_form.php?id=<?php echo $row['cla_id']; ?>" class="w-8 h-8 rounded-lg bg-white border border-slate-200 text-amber-500 hover:border-amber-500 hover:bg-amber-50 flex items-center justify-center transition shadow-sm"><i class="fa-solid fa-pen-to-square text-xs"></i></a>
-                                    <a href="delete_class_group.php?id=<?php echo $row['cla_id']; ?>" onclick="return confirm('ยืนยันการลบ?');" class="w-8 h-8 rounded-lg bg-white border border-slate-200 text-red-500 hover:border-red-500 hover:bg-red-50 flex items-center justify-center transition shadow-sm"><i class="fa-solid fa-trash-can text-xs"></i></a>
+                                    <a href="javascript:void(0)" onclick="confirmDelete('delete_class_group.php?id=<?php echo $row['cla_id']; ?>', '<?php echo addslashes($display_name); ?>')" class="w-8 h-8 rounded-lg bg-white border border-slate-200 text-red-500 hover:border-red-500 hover:bg-red-50 flex items-center justify-center transition shadow-sm"><i class="fa-solid fa-trash-can text-xs"></i></a>
                                 </div>
                             </td>
                         </tr>

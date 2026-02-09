@@ -254,8 +254,8 @@ require_once '../includes/header.php';
                                                class="w-8 h-8 rounded-lg border border-slate-200 text-amber-500 hover:bg-amber-50 flex items-center justify-center transition" title="แก้ไข">
                                                 <i class="fa-solid fa-pen-to-square"></i>
                                             </a>
-                                            <a href="delete_subject.php?id=<?php echo $sub['sub_id']; ?>" 
-                                               onclick="return confirm('ยืนยันลบ?');" 
+                                            <a href="javascript:void(0)" 
+                                               onclick="confirmDelete('delete_subject.php?id=<?php echo $sub['sub_id']; ?>', '<?php echo addslashes($sub['sub_name']); ?>')" 
                                                class="w-8 h-8 rounded-lg border border-slate-200 text-red-500 hover:bg-red-50 flex items-center justify-center transition" title="ลบ">
                                                 <i class="fa-solid fa-trash-can"></i>
                                             </a>

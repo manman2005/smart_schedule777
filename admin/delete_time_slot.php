@@ -1,4 +1,5 @@
 <?php
+// admin/delete_time_slot.php
 require_once '../config/db.php';
 require_once '../includes/auth.php';
 checkAdmin();
@@ -7,16 +8,20 @@ if (isset($_GET['id'])) {
     try {
         $stmt = $pdo->prepare("DELETE FROM time_slots WHERE tim_id = ?");
         $stmt->execute([$_GET['id']]);
+        
+        if ($stmt->rowCount() > 0) {
+            $_SESSION['success'] = "ลบช่วงเวลาเรียบร้อยแล้ว";
+        } else {
+            $_SESSION['error'] = "ไม่พบข้อมูลที่ต้องการลบ";
+        }
     } catch (PDOException $e) {
-        // กรณีลบไม่ได้ (เช่น ถูกใช้งานในตารางสอนแล้ว)
-        echo "<script>
-            alert('ไม่สามารถลบช่วงเวลานี้ได้ เนื่องจากมีการใช้งานในตารางสอนแล้ว'); 
-            window.location='manage_time_slots.php';
-        </script>";
-        exit();
+        if ($e->getCode() == '23000') {
+            $_SESSION['error'] = "ไม่สามารถลบช่วงเวลานี้ได้ เนื่องจากมีการใช้งานในตารางสอนแล้ว";
+        } else {
+            $_SESSION['error'] = "เกิดข้อผิดพลาด: " . $e->getMessage();
+        }
     }
 }
-
 header("Location: manage_time_slots.php");
 exit();
 ?>

@@ -66,10 +66,10 @@ $open_subjects = $stmt->fetchAll();
     <?php endif; ?>
     
     <div class="card-premium overflow-hidden <?php echo ($system_status == '0') ? 'opacity-75 grayscale-[0.5]' : ''; ?>">
-        <div class="p-6 border-b border-slate-100 bg-gradient-to-r from-blue-50 to-white flex flex-col md:flex-row justify-between items-center gap-4">
+        <div class="p-6 border-b border-slate-100 bg-gradient-to-r from-cvc-sky/10 to-white flex flex-col md:flex-row justify-between items-center gap-4">
             <div>
                 <h2 class="text-xl font-bold text-cvc-blue flex items-center gap-2">
-                    <div class="w-8 h-8 rounded-lg bg-blue-100 flex items-center justify-center text-sm"><i class="fa-solid fa-list-check"></i></div>
+                    <div class="w-8 h-8 rounded-lg bg-cvc-sky/30 flex items-center justify-center text-sm"><i class="fa-solid fa-list-check"></i></div>
                     รายวิชาที่เปิดให้จอง
                 </h2>
                 <p class="text-sm text-slate-500 mt-1 ml-10">
@@ -98,9 +98,9 @@ $open_subjects = $stmt->fetchAll();
                 <tbody class="divide-y divide-slate-50 text-sm bg-white">
                     <?php if (count($open_subjects) > 0): ?>
                         <?php foreach ($open_subjects as $row): ?>
-                        <tr class="hover:bg-blue-50/30 transition group">
+                        <tr class="hover:bg-red-50/30 transition group">
                             <td class="p-4 text-center align-middle">
-                                <span class="font-bold text-cvc-blue bg-blue-50 px-2 py-1 rounded text-xs border border-blue-100 shadow-sm whitespace-nowrap">
+                                <span class="font-bold text-cvc-blue bg-cvc-sky/20 px-2 py-1 rounded text-xs border border-cvc-blue/20 shadow-sm whitespace-nowrap">
                                     <?php echo $row['pla_semester']; ?> / <?php echo $row['pla_start_year']; ?>
                                 </span>
                             </td>

@@ -320,7 +320,7 @@ if ($selected_cla_id) {
                                 <th class="p-1 w-[40px] bg-slate-200 text-black text-center align-middle"><div class="writing-vertical mx-auto font-bold text-[10px] leading-tight py-1">พัก</div></th>
                             <?php else: ?>
                                 <th class="p-1 bg-slate-100 text-black align-middle border border-black">
-                                    <div class="font-bold text-xs text-indigo-800 mb-0.5">คาบที่ <?php echo $counter++; ?></div>
+                                    <div class="font-bold text-xs text-cvc-navy mb-0.5">คาบที่ <?php echo $counter++; ?></div>
                                     <div class="text-[9px] text-black font-mono inline-block px-1"><?php echo str_replace(':', '.', substr($slot['tim_range'], 0, 11)); ?></div>
                                 </th>
                             <?php endif; endforeach; ?>

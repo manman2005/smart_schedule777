@@ -57,21 +57,7 @@ require_once '../includes/header.php';
         </div>
     </div>
 
-    <?php if (isset($_SESSION['success'])): ?>
-        <div class="mb-6 p-4 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-700 flex items-center shadow-sm">
-            <i class="fa-solid fa-circle-check text-xl mr-3"></i>
-            <span class="font-bold"><?php echo $_SESSION['success']; ?></span>
-        </div>
-        <?php unset($_SESSION['success']); ?>
-    <?php endif; ?>
 
-    <?php if (isset($_SESSION['error'])): ?>
-        <div class="mb-6 p-4 rounded-xl bg-red-50 border border-red-200 text-red-700 flex items-center shadow-sm">
-            <i class="fa-solid fa-circle-exclamation text-xl mr-3"></i>
-            <span class="font-bold"><?php echo $_SESSION['error']; ?></span>
-        </div>
-        <?php unset($_SESSION['error']); ?>
-    <?php endif; ?>
     <div class="card-premium overflow-hidden border-0 shadow-xl shadow-slate-200/50">
         <div class="overflow-x-auto">
             <table class="w-full text-left border-collapse">
@@ -130,7 +116,7 @@ require_once '../includes/header.php';
                                     <a href="manage_teacher_form.php?id=<?php echo $tea['tea_id']; ?>" class="w-8 h-8 rounded-lg bg-white border border-slate-200 text-amber-500 hover:border-amber-500 hover:bg-amber-50 flex items-center justify-center transition shadow-sm">
                                         <i class="fa-solid fa-pen-to-square text-xs"></i>
                                     </a>
-                                    <a href="delete_teacher.php?id=<?php echo $tea['tea_id']; ?>" onclick="return confirm('ยืนยันลบข้อมูลครู?');" class="w-8 h-8 rounded-lg bg-white border border-slate-200 text-red-500 hover:border-red-500 hover:bg-red-50 flex items-center justify-center transition shadow-sm">
+                                    <a href="javascript:void(0)" onclick="confirmDelete('delete_teacher.php?id=<?php echo $tea['tea_id']; ?>', '<?php echo addslashes($tea['tea_fullname']); ?>')" class="w-8 h-8 rounded-lg bg-white border border-slate-200 text-red-500 hover:border-red-500 hover:bg-red-50 flex items-center justify-center transition shadow-sm">
                                         <i class="fa-solid fa-trash-can text-xs"></i>
                                     </a>
                                 </div>

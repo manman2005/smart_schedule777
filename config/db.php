@@ -6,14 +6,32 @@ $username = 'root';
 $password = ''; 
 
 try {
-    // ใช้ general_ci เพื่อให้ตรงกับฐานข้อมูลที่เราเพิ่งสร้างใหม่
     $options = [
         PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
         PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
         PDO::MYSQL_ATTR_INIT_COMMAND => "SET NAMES utf8mb4 COLLATE utf8mb4_general_ci" 
     ];
 
-    $pdo = new PDO("mysql:host=$host;dbname=$dbname;charset=utf8mb4", $username, $password, $options);
+    $hosts = ['127.0.0.1', 'localhost'];
+    $ports = [3306, 3307];
+    $connected = false;
+    $last_error = null;
+    foreach ($hosts as $h) {
+        foreach ($ports as $p) {
+            try {
+                $pdo = new PDO("mysql:host={$h};port={$p};dbname={$dbname};charset=utf8mb4", $username, $password, $options);
+                $connected = true;
+                $host = $h;
+                $port = $p;
+                break 2;
+            } catch (PDOException $e) {
+                $last_error = $e;
+            }
+        }
+    }
+    if (!$connected) {
+        throw $last_error ?? new PDOException('Unable to connect to MySQL');
+    }
 
 } catch (PDOException $e) {
     die("Connection failed: " . $e->getMessage());

@@ -225,7 +225,7 @@ require_once '../includes/header.php';
         </a>
         </div>
         <div class="flex gap-2">
-            <button onclick="window.print()" class="bg-cvc-blue text-white px-4 py-2 rounded-lg text-sm font-bold shadow-md hover:bg-blue-800 transition"><i class="fa-solid fa-print mr-1"></i> พิมพ์ (Browser)</button>
+            <button onclick="window.print()" class="btn-cvc text-sm font-bold"><i class="fa-solid fa-print mr-1"></i> พิมพ์ (Browser)</button>
             <button onclick="exportPDF()" class="bg-red-500 text-white px-4 py-2 rounded-lg text-sm font-bold shadow-md hover:bg-red-600 transition"><i class="fa-solid fa-file-pdf mr-1"></i> ดาวน์โหลด PDF</button>
         </div>
     </div>
@@ -241,19 +241,27 @@ require_once '../includes/header.php';
             <input type="hidden" name="mode" value="<?php echo $mode; ?>">
             <div>
                 <label class="block text-xs font-bold text-slate-500 uppercase mb-1">ปีการศึกษา</label>
-                <select name="year" class="w-full text-sm" onchange="this.form.submit()">
+                <select name="year" class="field-modern w-full text-sm" onchange="this.form.submit()">
                     <?php if (!empty($available_years)) { foreach($available_years as $y) { $sel = ($selected_year == $y) ? 'selected' : ''; echo "<option value='$y' $sel>$y</option>"; } } else { echo "<option value='$selected_year'>$selected_year</option>"; } ?>
                 </select>
             </div>
             <div>
                 <label class="block text-xs font-bold text-slate-500 uppercase mb-1">ภาคเรียน</label>
-                <select name="semester" class="w-full text-sm" onchange="this.form.submit()">
-                    <?php if (!empty($available_semesters)) { foreach($available_semesters as $s) { $sel = ($selected_semester == $s) ? 'selected' : ''; echo "<option value='$s' $sel>เทอม $s</option>"; } } else { echo "<option value='1'>เทอม 1</option>"; } ?>
+                <select name="semester" class="field-modern w-full text-sm" onchange="this.form.submit()">
+                    <?php if (!empty($available_semesters)) { 
+                        foreach($available_semesters as $s) { 
+                            $sel = ($selected_semester == $s) ? 'selected' : ''; 
+                            $sem_text = ($s == 3) ? 'ฤดูร้อน' : "เทอม $s";
+                            echo "<option value='$s' $sel>$sem_text</option>"; 
+                        } 
+                    } else { 
+                        echo "<option value='1'>เทอม 1</option>"; 
+                    } ?>
                 </select>
             </div>
             <div>
                 <label class="block text-xs font-bold text-slate-500 uppercase mb-1">เลือกเป้าหมาย</label>
-                <select name="id" class="w-full text-sm font-bold text-cvc-blue" onchange="this.form.submit()">
+                <select name="id" class="field-modern w-full text-sm font-bold text-cvc-blue" onchange="this.form.submit()">
                     <?php 
                     if ($mode == 'class') foreach ($classes as $c) {
                         $current_year_real = date('Y') + 543;
