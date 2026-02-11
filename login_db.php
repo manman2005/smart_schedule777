@@ -18,6 +18,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         if ($user && password_verify($password, $user['adm_password'])) {
             $_SESSION['user_id'] = $user['adm_id'];
             $_SESSION['user_name'] = $user['adm_name'];
+            $_SESSION['user_img'] = $user['adm_img'] ?? '';
             $_SESSION['role'] = 'admin';
             header("Location: admin/index.php");
             exit();
@@ -31,6 +32,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         if ($user && password_verify($password, $user['tea_password'])) {
             $_SESSION['user_id'] = $user['tea_id'];
             $_SESSION['user_name'] = $user['tea_fullname'];
+            $_SESSION['user_img'] = $user['tea_img'] ?? '';
             $_SESSION['role'] = 'teacher';
             header("Location: teacher/index.php");
             exit();
@@ -44,6 +46,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         if ($user && password_verify($password, $user['stu_password'])) {
             $_SESSION['user_id'] = $user['stu_id'];
             $_SESSION['user_name'] = $user['stu_fullname'];
+            $_SESSION['user_img'] = $user['stu_img'] ?? '';
             $_SESSION['role'] = 'student';
             header("Location: student/index.php");
             exit();
@@ -54,12 +57,14 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         header("Location: login.php"); // กลับไปหน้า Login
         exit();
 
-    } catch (PDOException $e) {
+    }
+    catch (PDOException $e) {
         $_SESSION['error'] = "ระบบเกิดข้อผิดพลาด: " . $e->getMessage();
         header("Location: login.php"); // กลับไปหน้า Login
         exit();
     }
-} else {
+}
+else {
     header("Location: login.php"); // กลับไปหน้า Login
     exit();
 }

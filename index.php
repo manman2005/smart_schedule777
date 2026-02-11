@@ -13,11 +13,13 @@ if (!isset($pdo)) {
 try {
     $classes = $pdo->query("SELECT * FROM class_groups ORDER BY cla_id ASC")->fetchAll();
     $teachers = $pdo->query("SELECT * FROM teachers ORDER BY tea_fullname ASC")->fetchAll();
-} catch (PDOException $e) {
+}
+catch (PDOException $e) {
     die("Database Error: " . $e->getMessage());
 }
 
-$current_year_real = date('Y') + 543; 
+$current_year_real = date('Y') + 543;
+
 ?>
 <!DOCTYPE html>
 <html lang="th">
@@ -27,539 +29,445 @@ $current_year_real = date('Y') + 543;
     <title>CVC Smart System - วิทยาลัยอาชีวศึกษาเชียงราย</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css">
-    <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&family=Prompt:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;800;900&family=Sarabun:wght@300;400;500;600;700&family=Prompt:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: 'Sarabun', sans-serif; background: #0a0a0a; overflow-x: hidden; }
+        body {
+            font-family: 'Sarabun', sans-serif;
+            background-color: #f3f4f6;
+            background-image:
+                url("data:image/svg+xml,%3Csvg width='100' height='100' viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M15 10h10v10H15V10zm35 0h10v10H50V10zm35 0h10v10H85V10zM15 45h10v10H15V45zm35 0h10v10H50V45zm35 0h10v10H85V45zM15 80h10v10H15V80zm35 0h10v10H50V80zm35 0h10v10H85V80zM5 25h90v5H5v-5zm0 35h90v5H5v-5zm0 35h90v5H5v-5zM25 5h5v90h-5V5zm35 0h5v90h-5V5zm35 0h5v90h-5V5z' fill='%239ca3af' fill-opacity='0.05' fill-rule='evenodd'/%3E%3C/svg%3E"),
+                url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%239ca3af' fill-opacity='0.05'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+            background-repeat: repeat;
+            background-attachment: fixed;
+            overflow: auto;
+            color: #334155;
+            height: 100vh;
+        }
         h1, h2, h3, .font-display { font-family: 'Prompt', sans-serif; }
+        .font-premium { font-family: 'Playfair Display', 'Georgia', serif; }
 
-        /* Premium Dark Theme */
-        .premium-bg {
-            min-height: 100vh;
-            background: 
-                radial-gradient(ellipse at 20% 0%, rgba(127, 29, 29, 0.4) 0%, transparent 50%),
-                radial-gradient(ellipse at 80% 100%, rgba(185, 28, 28, 0.3) 0%, transparent 50%),
-                radial-gradient(ellipse at 50% 50%, rgba(251, 191, 36, 0.05) 0%, transparent 50%),
-                linear-gradient(180deg, #0a0a0a 0%, #1a0505 50%, #0a0a0a 100%);
+        /* === BACKGROUND === */
+        .hero-bg {
+            height: 100vh;
+            position: relative;
         }
 
-        /* Animated Grid */
-        .grid-overlay {
-            position: fixed;
-            inset: 0;
-            background-image: 
-                linear-gradient(rgba(255,255,255,0.02) 1px, transparent 1px),
-                linear-gradient(90deg, rgba(255,255,255,0.02) 1px, transparent 1px);
-            background-size: 80px 80px;
-            pointer-events: none;
+        /* === PARTICLES (disabled on light bg) === */
+
+        /* === LOGO === */
+        .logo-ring {
+            position: relative;
+            width: 140px; height: 140px;
+        }
+        .logo-ring::before {
+            content: '';
+            position: absolute; inset: -8px;
+            border: 2px solid rgba(239,68,68,0.25);
+            border-radius: 50%;
+            animation: ringPulse 3s ease-out infinite;
+        }
+        .logo-ring::after {
+            content: '';
+            position: absolute; inset: -16px;
+            border: 1px solid rgba(239,68,68,0.1);
+            border-radius: 50%;
+            animation: ringPulse 3s ease-out 0.6s infinite;
+        }
+        @keyframes ringPulse {
+            0%   { transform: scale(1); opacity: 0.7; }
+            100% { transform: scale(1.35); opacity: 0; }
         }
 
-        /* Luxury Rose Gold Glow */
-        .glow-gold {
-            box-shadow: 
-                0 0 40px rgba(183, 110, 121, 0.3), 
-                0 0 80px rgba(183, 110, 121, 0.15),
-                inset 0 1px 0 rgba(255,255,255,0.2);
+        /* === SEARCH CARD === */
+        .search-card {
+            background: #ffffff;
+            border: 1px solid rgba(0,0,0,0.08);
+            border-radius: 24px;
+            box-shadow:
+                0 20px 50px rgba(0,0,0,0.08),
+                0 4px 12px rgba(0,0,0,0.04);
+            transition: transform 0.5s ease, box-shadow 0.5s ease;
+        }
+        .search-card:hover {
+            transform: translateY(-4px);
+            box-shadow:
+                0 28px 60px rgba(0,0,0,0.12),
+                0 8px 20px rgba(0,0,0,0.06);
         }
 
-        /* Premium Red Glow */
-        .glow-red {
-            box-shadow: 
-                0 0 40px rgba(180, 83, 9, 0.4), 
-                0 0 80px rgba(180, 83, 9, 0.2),
-                inset 0 1px 0 rgba(255,255,255,0.15);
+        /* === TAB PILLS === */
+        .tab-bar {
+            background: #f1f5f9;
+            border: 1px solid rgba(0,0,0,0.06);
+            border-radius: 16px;
+            padding: 5px;
+        }
+        .tab-pill {
+            color: #94a3b8;
+            border-radius: 12px;
+            padding: 10px 0;
+            font-weight: 600;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.35s ease;
+            border: none;
+            background: transparent;
+        }
+        .tab-pill:hover { color: #64748b; }
+        .tab-pill.active {
+            background: linear-gradient(145deg, #dc2626, #b91c1c);
+            color: #fff;
+            box-shadow: 0 4px 20px rgba(220,38,38,0.35);
         }
 
-        /* Logo Glow Animation */
-        .logo-glow {
-            animation: logoGlow 4s ease-in-out infinite;
-            filter: drop-shadow(0 0 30px rgba(220,38,38,0.5));
+        /* === INPUT === */
+        .search-input {
+            background: #f8fafc;
+            border: 2px solid rgba(51,65,85,0.2);
+            border-radius: 14px;
+            color: #334155;
+            transition: all 0.3s ease;
+        }
+        .search-input:focus {
+            outline: none;
+            border-color: #b91c1c;
+            background: #fff;
+            box-shadow: 0 0 0 3px rgba(185,28,28,0.1);
+        }
+        .search-input::placeholder { color: #94a3b8; }
+
+        /* === DROPDOWN === */
+        .dropdown-menu {
+            position: absolute;
+            top: calc(100% + 8px);
+            left: 0; right: 0;
+            background: #ffffff;
+            border: 1px solid rgba(0,0,0,0.1);
+            border-radius: 16px;
+            max-height: 220px;
+            overflow-y: auto;
+            z-index: 9999;
+            box-shadow: 0 16px 40px rgba(0,0,0,0.12);
+        }
+        .dropdown-item {
+            padding: 14px 20px;
+            cursor: pointer;
+            transition: background 0.2s ease;
+            border-bottom: 1px solid #f1f5f9;
+        }
+        .dropdown-item:last-child { border-bottom: none; }
+        .dropdown-item:hover { background: #fef2f2; }
+        .dropdown-menu::-webkit-scrollbar { width: 3px; }
+        .dropdown-menu::-webkit-scrollbar-track { background: transparent; }
+        .dropdown-menu::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+
+        /* === FEATURE CARDS === */
+        .feat-card {
+            background: rgba(255,255,255,0.7);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255,255,255,0.5);
+            border-radius: 20px;
+            padding: 24px 20px;
+            text-align: center;
+            transition: all 0.45s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+            box-shadow: 0 4px 24px rgba(0,0,0,0.06), inset 0 1px 0 rgba(255,255,255,0.8);
+            position: relative;
+            overflow: hidden;
+        }
+        .feat-card::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0;
+            height: 3px;
+            border-radius: 20px 20px 0 0;
+            opacity: 0;
+            transition: opacity 0.4s ease;
+        }
+        .feat-card:nth-child(1)::before { background: linear-gradient(90deg, #dc2626, #f87171); }
+        .feat-card:nth-child(2)::before { background: linear-gradient(90deg, #d97706, #fbbf24); }
+        .feat-card:nth-child(3)::before { background: linear-gradient(90deg, #059669, #34d399); }
+        .feat-card:hover {
+            transform: translateY(-8px) scale(1.02);
+            box-shadow: 0 20px 40px rgba(0,0,0,0.12), inset 0 1px 0 rgba(255,255,255,0.9);
+            border-color: rgba(255,255,255,0.8);
+        }
+        .feat-card:hover::before {
+            opacity: 1;
+        }
+        .feat-icon {
+            width: 56px; height: 56px;
+            border-radius: 16px;
+            display: inline-flex; align-items: center; justify-content: center;
+            font-size: 24px;
+            margin-bottom: 14px;
+            position: relative;
+            transition: transform 0.4s ease;
+        }
+        .feat-card:hover .feat-icon {
+            transform: scale(1.1) rotate(-5deg);
         }
 
-        @keyframes logoGlow {
-            0%, 100% { filter: drop-shadow(0 0 30px rgba(220,38,38,0.5)) drop-shadow(0 0 60px rgba(220,38,38,0.3)); }
-            50% { filter: drop-shadow(0 0 50px rgba(220,38,38,0.8)) drop-shadow(0 0 100px rgba(220,38,38,0.5)); }
+        /* === LOGIN BUTTON === */
+        .btn-login {
+            background: linear-gradient(145deg, #dc2626, #b91c1c);
+            color: #fff;
+            font-weight: 700;
+            padding: 10px 24px;
+            border-radius: 12px;
+            border: none;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 16px rgba(220,38,38,0.35);
+            text-decoration: none;
+            font-size: 14px;
+        }
+        .btn-login:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(220,38,38,0.5);
         }
 
-        /* Floating Animation */
-        .float {
-            animation: float 8s ease-in-out infinite;
+        /* === ANIMATIONS === */
+        @keyframes fadeUp {
+            from { opacity: 0; transform: translateY(30px); }
+            to   { opacity: 1; transform: translateY(0); }
         }
-
-        @keyframes float {
-            0%, 100% { transform: translateY(0) rotate(0deg); }
-            25% { transform: translateY(-15px) rotate(1deg); }
-            75% { transform: translateY(-10px) rotate(-1deg); }
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to   { opacity: 1; }
         }
+        .anim-fade-up { animation: fadeUp 0.7s ease-out both; }
+        .anim-fade-up-d1 { animation: fadeUp 0.7s 0.1s ease-out both; }
+        .anim-fade-up-d2 { animation: fadeUp 0.7s 0.2s ease-out both; }
+        .anim-fade-up-d3 { animation: fadeUp 0.7s 0.3s ease-out both; }
+        .anim-fade-up-d4 { animation: fadeUp 0.7s 0.4s ease-out both; }
+        .anim-fade-up-d5 { animation: fadeUp 0.7s 0.5s ease-out both; }
+        .anim-fade-in { animation: fadeIn 1s ease-out both; }
 
-        /* Luxury Gold Text Gradient */
-        .text-gradient {
-            background: linear-gradient(135deg, 
-                #D4AF37 0%, 
-                #F5E6A0 25%, 
-                #D4AF37 50%, 
-                #AA8C2C 75%, 
-                #D4AF37 100%);
+        /* === MISC === */
+        .text-shimmer {
+            background: linear-gradient(90deg, #b91c1c 0%, #ef4444 50%, #b91c1c 100%);
             background-size: 200% auto;
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             background-clip: text;
-            animation: goldShimmer 5s linear infinite;
+            animation: shimmer 4s linear infinite;
         }
-
+        @keyframes shimmer {
+            0%   { background-position: 0% center; }
+            100% { background-position: 200% center; }
+        }
         @keyframes goldShimmer {
-            0% { background-position: 0% center; }
+            0%   { background-position: 0% center; }
             100% { background-position: 200% center; }
         }
 
-        /* Premium Glass Card */
-        .premium-card {
-            background: linear-gradient(145deg, 
-                rgba(25,20,15,0.98) 0%, 
-                rgba(15,12,10,0.98) 100%);
-            border: 1px solid rgba(212,175,55,0.15);
-            border-radius: 28px;
-            transition: all 0.6s cubic-bezier(0.4, 0, 0.2, 1);
-            position: relative;
-            z-index: 10;
-            overflow: visible;
-            box-shadow: 
-                0 20px 60px rgba(0,0,0,0.5),
-                inset 0 1px 0 rgba(255,255,255,0.05),
-                inset 0 -1px 0 rgba(0,0,0,0.2);
+        .divider {
+            width: 60px; height: 3px;
+            background: linear-gradient(90deg, #dc2626, transparent);
+            border-radius: 2px;
         }
 
-        .premium-card::before {
-            content: '';
-            position: absolute;
-            inset: -1px;
-            border-radius: 29px;
-            padding: 1px;
-            background: linear-gradient(145deg, rgba(212,175,55,0.3), transparent 60%);
-            -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-            mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-            -webkit-mask-composite: xor;
-            mask-composite: exclude;
-            pointer-events: none;
-            opacity: 0;
-            transition: opacity 0.5s ease;
-        }
-
-        .premium-card:hover::before {
-            opacity: 1;
-        }
-
-        .premium-card:hover {
-            transform: translateY(-8px);
-            border-color: rgba(212,175,55,0.3);
-            box-shadow: 
-                0 35px 80px rgba(0,0,0,0.6), 
-                0 0 60px rgba(212,175,55,0.1),
-                inset 0 1px 0 rgba(255,255,255,0.08);
-        }
-
-        .premium-card.red:hover {
-            border-color: rgba(180,83,9,0.3);
-            box-shadow: 
-                0 35px 80px rgba(0,0,0,0.6), 
-                0 0 60px rgba(180,83,9,0.15);
-        }
-
-        /* Luxury Input */
-        .premium-input {
-            background: rgba(0,0,0,0.4);
-            border: 1px solid rgba(212,175,55,0.2);
-            color: white;
-            transition: all 0.4s ease;
-            font-size: 15px;
-        }
-
-        .premium-input:focus {
-            outline: none;
-            border-color: rgba(212,175,55,0.5);
-            background: rgba(0,0,0,0.6);
-            box-shadow: 
-                0 0 30px rgba(212,175,55,0.1),
-                inset 0 0 20px rgba(212,175,55,0.03);
-        }
-
-        .premium-input::placeholder {
-            color: rgba(255,255,255,0.35);
-        }
-
-        /* Luxury Dropdown */
-        .dropdown-menu {
-            position: absolute;
-            top: calc(100% + 12px);
-            left: 0;
-            right: 0;
-            background: linear-gradient(180deg, #151210 0%, #0c0a09 100%);
-            border: 1px solid rgba(212,175,55,0.2);
-            border-radius: 20px;
-            max-height: 200px;
-            overflow-y: auto;
-            z-index: 9999;
-            box-shadow: 
-                0 30px 80px rgba(0,0,0,0.9),
-                0 0 40px rgba(0,0,0,0.5);
-        }
-
-        .dropdown-item {
-            padding: 18px 24px;
-            cursor: pointer;
-            transition: all 0.25s ease;
-            border-bottom: 1px solid rgba(212,175,55,0.08);
-        }
-
-        .dropdown-item:hover {
-            background: linear-gradient(90deg, rgba(212,175,55,0.1), transparent);
-        }
-
-        .dropdown-item:last-child {
-            border-bottom: none;
-        }
-
-        /* Luxury Scrollbar */
-        .dropdown-menu::-webkit-scrollbar { width: 4px; }
-        .dropdown-menu::-webkit-scrollbar-track { background: transparent; }
-        .dropdown-menu::-webkit-scrollbar-thumb { 
-            background: linear-gradient(180deg, rgba(212,175,55,0.4), rgba(212,175,55,0.2)); 
-            border-radius: 10px; 
-        }
-
-        /* Premium Pulse Ring */
-        .pulse-ring {
-            position: absolute;
-            inset: -25px;
-            border: 1px solid rgba(212,175,55,0.2);
-            border-radius: 50%;
-            animation: luxuryPulse 3s ease-out infinite;
-        }
-
-        @keyframes luxuryPulse {
-            0% { transform: scale(1); opacity: 0.6; }
-            100% { transform: scale(1.4); opacity: 0; }
-        }
-
-        /* Icon Container */
-        .icon-container {
-            position: relative;
-        }
-
-        .icon-container::before {
-            content: '';
-            position: absolute;
-            inset: -12px;
-            background: radial-gradient(circle, rgba(212,175,55,0.2) 0%, transparent 70%);
-            border-radius: 50%;
-            animation: iconGlow 3s ease-in-out infinite;
-        }
-
-        .premium-card.red .icon-container::before {
-            background: radial-gradient(circle, rgba(180,83,9,0.25) 0%, transparent 70%);
-        }
-
-        @keyframes iconGlow {
-            0%, 100% { transform: scale(1); opacity: 0.5; }
-            50% { transform: scale(1.15); opacity: 0.8; }
-        }
-
-        /* Luxury Icon Box */
-        .icon-box {
-            position: relative;
-            background: linear-gradient(145deg, #D4AF37, #8B6914);
-            border-radius: 16px;
-            box-shadow: 
-                0 10px 30px rgba(212,175,55,0.3),
-                inset 0 2px 0 rgba(255,255,255,0.3),
-                inset 0 -2px 0 rgba(0,0,0,0.2);
-        }
-
-        .icon-box.amber {
-            background: linear-gradient(145deg, #D4AF37, #AA8C2C);
-        }
-
-        .icon-box.bronze {
-            background: linear-gradient(145deg, #CD7F32, #8B4513);
-        }
-
-        /* Luxury Button */
-        .btn-luxury {
-            background: linear-gradient(145deg, #D4AF37, #8B6914);
-            color: #0a0705;
-            font-weight: 700;
-            padding: 14px 32px;
-            border-radius: 50px;
-            border: none;
-            transition: all 0.4s ease;
-            position: relative;
-            overflow: hidden;
-            box-shadow: 
-                0 8px 25px rgba(212,175,55,0.3),
-                inset 0 1px 0 rgba(255,255,255,0.3);
-        }
-
-        .btn-luxury::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: -100%;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);
-            transition: left 0.6s ease;
-        }
-
-        .btn-luxury:hover::before {
-            left: 100%;
-        }
-
-        .btn-luxury:hover {
-            transform: translateY(-3px);
-            box-shadow: 
-                0 15px 40px rgba(212,175,55,0.4),
-                inset 0 1px 0 rgba(255,255,255,0.4);
-        }
-
-        /* Feature Badge */
-        .feature-badge {
-            background: linear-gradient(145deg, rgba(20,16,12,0.9), rgba(10,8,6,0.9));
-            border: 1px solid rgba(212,175,55,0.15);
-            border-radius: 50px;
-            padding: 12px 20px;
-            transition: all 0.4s ease;
-        }
-
-        .feature-badge:hover {
-            border-color: rgba(212,175,55,0.3);
-            transform: translateY(-3px);
-            box-shadow: 0 15px 40px rgba(0,0,0,0.3);
-        }
-
-        /* Ornament Lines */
-        .ornament-line {
-            height: 1px;
-            background: linear-gradient(90deg, transparent, rgba(212,175,55,0.3), transparent);
-        }
-
-        /* Crown Badge */
-        .crown-badge {
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            padding: 8px 20px;
-            background: linear-gradient(145deg, rgba(212,175,55,0.15), rgba(212,175,55,0.05));
-            border: 1px solid rgba(212,175,55,0.3);
-            border-radius: 50px;
-            color: #D4AF37;
-            font-size: 11px;
-            font-weight: 700;
-            letter-spacing: 2px;
-            text-transform: uppercase;
-        }
-
-        /* Search Tabs */
-        .search-tab {
-            color: rgba(255,255,255,0.4);
-            background: transparent;
-        }
-
-        .search-tab:hover {
-            color: rgba(255,255,255,0.7);
-            background: rgba(255,255,255,0.05);
-        }
-
-        .search-tab.active {
-            color: white;
-            background: linear-gradient(145deg, #DC2626, #991B1B);
-            box-shadow: 0 4px 15px rgba(220,38,38,0.3);
+        /* Responsive */
+        @media (max-width: 1024px) {
+            .hero-grid { grid-template-columns: 1fr !important; }
+            .hero-left { text-align: center; }
+            .feat-row { flex-direction: column; align-items: center; }
+            body { height: auto; min-height: 100vh; }
+            .hero-bg { height: auto; min-height: 100vh; }
+            .hero-bg > .h-screen { height: auto !important; min-height: auto !important; padding: 80px 0 60px; }
         }
 
         /* Panel Transition */
-        .search-panel {
-            transition: opacity 0.3s ease, transform 0.3s ease;
-        }
-
-        .search-panel.hidden {
-            display: none;
-        }
+        .search-panel { transition: opacity 0.3s ease, transform 0.3s ease; }
+        .search-panel.hidden { display: none; }
     </style>
 </head>
 <body>
 
-    <div class="premium-bg">
-        <div class="grid-overlay"></div>
+    <div class="hero-bg">
 
         <!-- Login Button -->
-        <div class="fixed top-5 right-5 z-50">
-            <a href="login.php" class="btn-luxury text-sm flex items-center gap-2">
-                <i class="fa-solid fa-crown"></i> เข้าสู่ระบบ
+        <div class="fixed top-5 right-5 z-50 anim-fade-in">
+            <a href="login.php" class="btn-login flex items-center gap-2">
+                <i class="fa-solid fa-right-to-bracket text-sm"></i> เข้าสู่ระบบ
             </a>
         </div>
 
-        <!-- Centered Layout -->
-        <div class="relative z-10 min-h-screen flex flex-col items-center justify-center px-4 py-16">
-            
-            <!-- Logo -->
-            <div class="relative mb-6 animate__animated animate__fadeInDown">
-                <div class="w-28 h-28 relative float">
-                    <div class="pulse-ring"></div>
-                    <div class="pulse-ring" style="animation-delay: 0.5s;"></div>
-                    <img src="/images/cvc_logo.png" alt="CVC Logo" class="w-full h-full object-contain logo-glow relative z-10">
+        <!-- HERO SECTION -->
+        <div class="h-screen flex items-center">
+            <div class="max-w-6xl mx-auto px-6 w-full py-8">
+                <div class="hero-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 40px; align-items: center;">
+
+                    <!-- LEFT: Branding -->
+                    <div class="hero-left">
+                        <!-- Logo + Title Row -->
+                        <div class="anim-fade-up mb-4 flex items-center gap-5">
+                            <div class="logo-ring flex-shrink-0">
+                                <img src="images/cvc_logo.png" alt="CVC Logo" class="w-full h-full object-contain relative z-10" style="filter: drop-shadow(0 0 24px rgba(220,38,38,0.3));">
+                            </div>
+                            <h1 class="font-premium leading-tight" style="font-size: clamp(2.2rem, 4.5vw, 3.5rem); font-weight: 900; letter-spacing: -0.5px;">
+                                <span style="background: linear-gradient(135deg, #b8860b 0%, #ffd700 25%, #daa520 50%, #f5c542 75%, #b8860b 100%); background-size: 200% auto; -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; animation: goldShimmer 3s linear infinite; filter: drop-shadow(0 2px 4px rgba(184,134,11,0.3));">CVC</span><br><span class="text-shimmer" style="font-family: 'Playfair Display', serif;">Smart System</span>
+                            </h1>
+                        </div>
+
+
+                        <!-- Feature Cards -->
+                        <div class="anim-fade-up-d4 feat-row flex gap-4" style="max-width: 480px; margin-top: 28px;">
+                            <div class="feat-card flex-1">
+                                <div class="feat-icon" style="background: linear-gradient(145deg, rgba(220,38,38,0.15), rgba(248,113,113,0.08)); color: #ef4444; box-shadow: 0 4px 12px rgba(220,38,38,0.15);">
+                                    <i class="fa-solid fa-wand-magic-sparkles"></i>
+                                </div>
+                                <div class="text-slate-800 text-sm font-bold mb-1" style="letter-spacing: 0.3px;">อัตโนมัติ</div>
+                                <div class="text-slate-400 text-xs" style="line-height: 1.5;">จัดตารางด้วย AI</div>
+                            </div>
+                            <div class="feat-card flex-1">
+                                <div class="feat-icon" style="background: linear-gradient(145deg, rgba(217,119,6,0.15), rgba(251,191,36,0.08)); color: #f59e0b; box-shadow: 0 4px 12px rgba(217,119,6,0.15);">
+                                    <i class="fa-solid fa-bolt"></i>
+                                </div>
+                                <div class="text-slate-800 text-sm font-bold mb-1" style="letter-spacing: 0.3px;">เรียลไทม์</div>
+                                <div class="text-slate-400 text-xs" style="line-height: 1.5;">อัพเดททันที</div>
+                            </div>
+                            <div class="feat-card flex-1">
+                                <div class="feat-icon" style="background: linear-gradient(145deg, rgba(5,150,105,0.15), rgba(52,211,153,0.08)); color: #10b981; box-shadow: 0 4px 12px rgba(5,150,105,0.15);">
+                                    <i class="fa-solid fa-shield-halved"></i>
+                                </div>
+                                <div class="text-slate-800 text-sm font-bold mb-1" style="letter-spacing: 0.3px;">ปลอดภัย</div>
+                                <div class="text-slate-400 text-xs" style="line-height: 1.5;">ข้อมูลเข้ารหัส</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- RIGHT: Search Card -->
+                    <div class="anim-fade-up-d3">
+                        <div class="search-card p-6">
+
+                            <!-- Tab Pills -->
+                            <div class="tab-bar flex mb-4">
+                                <button id="tab-student" onclick="switchTab('student')" class="tab-pill active flex-1 flex items-center justify-center gap-2">
+                                    <i class="fa-solid fa-user-graduate"></i> นักเรียน
+                                </button>
+                                <button id="tab-teacher" onclick="switchTab('teacher')" class="tab-pill flex-1 flex items-center justify-center gap-2">
+                                    <i class="fa-solid fa-chalkboard-user"></i> ครูผู้สอน
+                                </button>
+                            </div>
+
+                            <!-- Student Search Panel -->
+                            <div id="panel-student" class="search-panel">
+                                <div class="flex items-center gap-3 mb-4">
+                                    <div class="w-10 h-10 rounded-xl flex items-center justify-center text-lg" style="background: linear-gradient(145deg, #dc2626, #991b1b); color: #fff; box-shadow: 0 4px 14px rgba(220,38,38,0.35);">
+                                        <i class="fa-solid fa-user-graduate"></i>
+                                    </div>
+                                    <div>
+                                        <h2 class="text-lg font-display font-bold text-slate-800">ค้นหาตารางเรียน</h2>
+                                        <p class="text-slate-400 text-xs">พิมพ์ชื่อกลุ่มเรียนหรือรหัส</p>
+                                    </div>
+                                </div>
+                                
+                                <form action="public_schedule.php" method="GET" id="form-student">
+                                    <input type="hidden" name="mode" value="class">
+                                    <input type="hidden" name="id" id="student_id_input">
+                                    
+                                    <div class="relative">
+                                        <i class="fa-solid fa-magnifying-glass absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"></i>
+                                        <input type="text" id="student_search" 
+                                            class="search-input w-full px-5 py-3 pl-12 text-sm font-medium"
+                                            placeholder="พิมพ์ชื่อกลุ่ม หรือรหัส..." 
+                                            autocomplete="off">
+                                        <div id="student_dropdown" class="dropdown-menu hidden"></div>
+                                    </div>
+                                </form>
+                            </div>
+
+                            <!-- Teacher Search Panel -->
+                            <div id="panel-teacher" class="search-panel hidden">
+                                <div class="flex items-center gap-3 mb-4">
+                                    <div class="w-10 h-10 rounded-xl flex items-center justify-center text-lg" style="background: linear-gradient(145deg, #f87171, #dc2626); color: #fff; box-shadow: 0 4px 14px rgba(248,113,113,0.3);">
+                                        <i class="fa-solid fa-chalkboard-user"></i>
+                                    </div>
+                                    <div>
+                                        <h2 class="text-lg font-display font-bold text-slate-800">ค้นหาตารางสอน</h2>
+                                        <p class="text-slate-400 text-xs">พิมพ์ชื่อหรือรหัสอาจารย์</p>
+                                    </div>
+                                </div>
+                                
+                                <form action="public_schedule.php" method="GET" id="form-teacher">
+                                    <input type="hidden" name="mode" value="teacher">
+                                    <input type="hidden" name="id" id="teacher_id_input">
+                                    
+                                    <div class="relative">
+                                        <i class="fa-solid fa-magnifying-glass absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"></i>
+                                        <input type="text" id="teacher_search" 
+                                            class="search-input w-full px-5 py-3 pl-12 text-sm font-medium"
+                                            placeholder="พิมพ์ชื่ออาจารย์ หรือรหัส..." 
+                                            autocomplete="off">
+                                        <div id="teacher_dropdown" class="dropdown-menu hidden"></div>
+                                    </div>
+                                </form>
+                            </div>
+
+                            <!-- Hint -->
+                            <div class="mt-4 flex items-center gap-2 text-slate-400 text-xs">
+                                <i class="fa-solid fa-circle-info"></i>
+                                <span>เลือกจากผลลัพธ์เพื่อดูตาราง</span>
+                            </div>
+                        </div>
+                    </div>
+
                 </div>
             </div>
+        </div>
 
-            <!-- Title -->
-            <h1 class="text-3xl md:text-5xl font-display font-extrabold text-white mb-3 leading-tight text-center animate__animated animate__fadeInDown">
-                ระบบบริการ<span class="text-gradient">การศึกษา</span>
-            </h1>
-
-            <p class="text-gray-400 text-sm md:text-base text-center mb-8 animate__animated animate__fadeInDown">
-                วิทยาลัยอาชีวศึกษาเชียงราย
+        <!-- FOOTER -->
+        <div class="absolute bottom-3 left-0 right-0 text-center z-10">
+            <p class="text-slate-400 text-xs">
+                © <?php echo $current_year_real; ?> CVC Smart System • วิทยาลัยอาชีวศึกษาเชียงราย
             </p>
-
-            <!-- Search Card -->
-            <div class="w-full max-w-md animate__animated animate__fadeInUp">
-                
-                <!-- Features -->
-                <div class="flex flex-wrap gap-2 justify-center mb-4">
-                    <div class="feature-badge flex items-center gap-2">
-                        <i class="fa-solid fa-wand-magic-sparkles text-amber-400 text-xs"></i>
-                        <span class="text-amber-200/70 text-xs font-medium">จัดตารางอัตโนมัติ</span>
-                    </div>
-                    <div class="feature-badge flex items-center gap-2">
-                        <i class="fa-solid fa-bolt text-amber-400 text-xs"></i>
-                        <span class="text-amber-200/70 text-xs font-medium">เรียลไทม์</span>
-                    </div>
-                    <div class="feature-badge flex items-center gap-2">
-                        <i class="fa-solid fa-shield-halved text-amber-400 text-xs"></i>
-                        <span class="text-amber-200/70 text-xs font-medium">ปลอดภัย</span>
-                    </div>
-                </div>
-
-                <!-- Search Tabs -->
-                <div class="flex mb-5 bg-black/30 rounded-2xl p-1.5 border border-white/5">
-                    <button id="tab-student" onclick="switchTab('student')" class="search-tab active flex-1 py-3 px-4 rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2">
-                        <i class="fa-solid fa-user-graduate"></i>
-                        <span>นักเรียน</span>
-                    </button>
-                    <button id="tab-teacher" onclick="switchTab('teacher')" class="search-tab flex-1 py-3 px-4 rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2">
-                        <i class="fa-solid fa-chalkboard-user"></i>
-                        <span>ครูผู้สอน</span>
-                    </button>
-                </div>
-
-                <!-- Student Search Panel -->
-                <div id="panel-student" class="search-panel">
-                    <div class="premium-card p-6">
-                        <div class="flex items-center gap-4 mb-5">
-                            <div class="w-14 h-14 rounded-2xl bg-gradient-to-br from-red-500 to-red-800 flex items-center justify-center text-white text-2xl glow-red">
-                                <i class="fa-solid fa-user-graduate"></i>
-                            </div>
-                            <div>
-                                <h2 class="text-xl font-display font-bold text-white">ค้นหาตารางเรียน</h2>
-                                <p class="text-gray-500 text-xs">พิมพ์ชื่อกลุ่มหรือรหัส</p>
-                            </div>
-                        </div>
-                        
-                        <form action="public_schedule.php" method="GET" id="form-student">
-                            <input type="hidden" name="mode" value="class">
-                            <input type="hidden" name="id" id="student_id_input">
-                            
-                            <div class="relative">
-                                <i class="fa-solid fa-magnifying-glass absolute left-4 top-1/2 -translate-y-1/2 text-gray-500"></i>
-                                <input type="text" id="student_search" 
-                                    class="premium-input w-full px-5 py-3.5 pl-12 rounded-xl text-sm font-medium"
-                                    placeholder="พิมพ์ชื่อกลุ่ม หรือรหัส..." 
-                                    autocomplete="off">
-                                <div id="student_dropdown" class="dropdown-menu hidden"></div>
-                            </div>
-                        </form>
-                    </div>
-                </div>
-
-                <!-- Teacher Search Panel -->
-                <div id="panel-teacher" class="search-panel hidden">
-                    <div class="premium-card p-6">
-                        <div class="flex items-center gap-4 mb-5">
-                            <div class="w-14 h-14 rounded-2xl bg-gradient-to-br from-amber-400 to-amber-700 flex items-center justify-center text-white text-2xl glow-gold">
-                                <i class="fa-solid fa-chalkboard-user"></i>
-                            </div>
-                            <div>
-                                <h2 class="text-xl font-display font-bold text-white">ค้นหาตารางสอน</h2>
-                                <p class="text-gray-500 text-xs">พิมพ์ชื่อหรือรหัสอาจารย์</p>
-                            </div>
-                        </div>
-                        
-                        <form action="public_schedule.php" method="GET" id="form-teacher">
-                            <input type="hidden" name="mode" value="teacher">
-                            <input type="hidden" name="id" id="teacher_id_input">
-                            
-                            <div class="relative">
-                                <i class="fa-solid fa-magnifying-glass absolute left-4 top-1/2 -translate-y-1/2 text-gray-500"></i>
-                                <input type="text" id="teacher_search" 
-                                    class="premium-input w-full px-5 py-3.5 pl-12 rounded-xl text-sm font-medium"
-                                    placeholder="พิมพ์ชื่ออาจารย์ หรือรหัส..." 
-                                    autocomplete="off">
-                                <div id="teacher_dropdown" class="dropdown-menu hidden"></div>
-                            </div>
-                        </form>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Footer -->
-            <div class="mt-10">
-                <div class="ornament-line w-32 mx-auto mb-4"></div>
-                <p class="text-amber-200/30 text-xs text-center">
-                    © 2568 CVC Smart System • วิทยาลัยอาชีวศึกษาเชียงราย
-                </p>
         </div>
     </div>
 
     <script>
 
-        // Tab Switching
+        // === Tab Switching ===
         function switchTab(type) {
-            // Toggle tabs
             document.getElementById('tab-student').classList.toggle('active', type === 'student');
             document.getElementById('tab-teacher').classList.toggle('active', type === 'teacher');
-            
-            // Toggle panels
             document.getElementById('panel-student').classList.toggle('hidden', type !== 'student');
             document.getElementById('panel-teacher').classList.toggle('hidden', type !== 'teacher');
         }
 
-        // Search Data
+        // === Search Data ===
         const studentsData = [
-            <?php foreach($classes as $c): 
-                $stu_year = $current_year_real - $c['cla_year'] + 1;
-                if ($stu_year < 1) $stu_year = 1;
-                $room_no = intval($c['cla_group_no']);
-                $display_name = $c['cla_name'] . "." . $stu_year . "/" . $room_no;
-            ?>
+            <?php foreach ($classes as $c):
+    $stu_year = $current_year_real - $c['cla_year'] + 1;
+    if ($stu_year < 1)
+        $stu_year = 1;
+    $room_no = intval($c['cla_group_no']);
+    $display_name = $c['cla_name'] . "." . $stu_year . "/" . $room_no;
+?>
             { 
                 id: "<?php echo $c['cla_id']; ?>", 
                 text: "<?php echo $display_name; ?>",
                 subtext: "รหัส: <?php echo $c['cla_id']; ?>",
                 search: "<?php echo $c['cla_name'] . ' ' . $c['cla_id'] . ' ' . $display_name; ?>" 
             },
-            <?php endforeach; ?>
+            <?php
+endforeach; ?>
         ];
 
         const teachersData = [
-            <?php foreach($teachers as $t): ?>
+            <?php foreach ($teachers as $t): ?>
             { 
                 id: "<?php echo $t['tea_id']; ?>", 
                 text: "<?php echo $t['tea_fullname']; ?>",
                 subtext: "รหัส: <?php echo $t['tea_code']; ?>",
                 search: "<?php echo $t['tea_fullname'] . ' ' . $t['tea_code'] . ' ' . $t['tea_username']; ?>" 
             },
-            <?php endforeach; ?>
+            <?php
+endforeach; ?>
         ];
 
-        // Search Function
+        // === Search Function ===
         function setupSearch(inputId, dropdownId, hiddenId, dataList) {
             const input = document.getElementById(inputId);
             const dropdown = document.getElementById(dropdownId);
@@ -589,10 +497,10 @@ $current_year_real = date('Y') + 543;
                         
                         div.innerHTML = `
                             <div>
-                                <div class="font-bold text-white text-lg">${item.text}</div>
-                                <div class="text-xs text-gray-500 mt-1">${item.subtext}</div>
+                                <div class="font-bold text-slate-700 text-sm">${item.text}</div>
+                                <div class="text-xs text-slate-400 mt-0.5">${item.subtext}</div>
                             </div>
-                            <i class="fa-solid fa-arrow-right text-gray-600"></i>
+                            <i class="fa-solid fa-arrow-right text-slate-300 text-xs"></i>
                         `;
                         
                         div.onclick = () => {

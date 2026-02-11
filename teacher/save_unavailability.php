@@ -26,10 +26,12 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         }
 
         $pdo->commit();
-        header("Location: unavailability.php?status=success");
+        $_SESSION['success'] = 'บันทึกข้อมูลเวลาที่ไม่สะดวกสอนเรียบร้อยแล้ว';
+        header("Location: unavailability.php");
         exit;
 
-    } catch (PDOException $e) {
+    }
+    catch (PDOException $e) {
         $pdo->rollBack();
         die("Error: " . $e->getMessage());
     }
