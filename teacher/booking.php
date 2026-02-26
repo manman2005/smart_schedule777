@@ -9,7 +9,8 @@ $tea_id = $_SESSION['user_id'];
 // --- [NEW] 1. ตรวจสอบสถานะระบบ ---
 $stmt_sys = $pdo->prepare("SELECT setting_value FROM system_settings WHERE setting_key = 'teacher_booking'");
 $stmt_sys->execute();
-$system_status = $stmt_sys->fetchColumn(); 
+$system_status = $stmt_sys->fetchColumn();
+
 // ค่าจะเป็น '1' (เปิด) หรือ '0' (ปิด)
 // --------------------------------
 
@@ -27,15 +28,18 @@ $teacher_sug_name = $teacher_info['sug_name'] ?? 'ไม่ระบุสัง
 // 3. ดึงรายวิชาที่เปิดให้จอง
 $sql = "SELECT ps.*, s.sub_code, s.sub_name, s.sub_credit, s.sub_th_pr_ot,
                p.pla_name, p.pla_start_year, p.pla_semester, 
-               c.cla_name, c.cla_level_code, sg.sug_name
+               GROUP_CONCAT(DISTINCT c.cla_name SEPARATOR ', ') as cla_name, 
+               c.cla_level_code, sg.sug_name
         FROM plan_subjects ps
         JOIN subjects s ON ps.sub_id = s.sub_id
         JOIN study_plans p ON ps.pla_id = p.pla_id
-        JOIN class_groups c ON p.cla_id = c.cla_id
+        JOIN study_plan_classes spc ON p.pla_id = spc.pla_id
+        JOIN class_groups c ON spc.cla_id = c.cla_id
         LEFT JOIN subject_groups sg ON s.sug_id = sg.sug_id
         WHERE ps.tea_id IS NULL 
         AND s.sug_id = ? 
-        ORDER BY p.pla_start_year DESC, p.pla_semester ASC, c.cla_id ASC";
+        GROUP BY ps.pls_id
+        ORDER BY p.pla_start_year DESC, p.pla_semester ASC";
 
 $stmt = $pdo->prepare($sql);
 $stmt->execute([$teacher_sug_id]);
@@ -63,9 +67,10 @@ $open_subjects = $stmt->fetchAll();
                 <p class="text-red-600 text-sm mt-1">ขณะนี้เจ้าหน้าที่กำลังดำเนินการจัดตารางสอน หรือหมดเขตการจองรายวิชาแล้ว <br>คุณสามารถดูรายวิชาได้ แต่ไม่สามารถกดเลือกสอนได้</p>
             </div>
         </div>
-    <?php endif; ?>
+    <?php
+endif; ?>
     
-    <div class="card-premium overflow-hidden <?php echo ($system_status == '0') ? 'opacity-75 grayscale-[0.5]' : ''; ?>">
+    <div class="card-premium overflow-hidden <?php echo($system_status == '0') ? 'opacity-75 grayscale-[0.5]' : ''; ?>">
         <div class="p-6 border-b border-slate-100 bg-gradient-to-r from-cvc-sky/10 to-white flex flex-col md:flex-row justify-between items-center gap-4">
             <div>
                 <h2 class="text-xl font-bold text-cvc-blue flex items-center gap-2">
@@ -139,15 +144,19 @@ $open_subjects = $stmt->fetchAll();
                                             <i class="fa-solid fa-check-circle"></i> เลือกสอน
                                         </button>
                                     </form>
-                                <?php else: ?>
+                                <?php
+        else: ?>
                                     <button disabled class="w-full bg-slate-100 text-slate-400 px-4 py-2 rounded-lg border border-slate-200 cursor-not-allowed text-xs font-bold flex items-center justify-center gap-2">
                                         <i class="fa-solid fa-lock"></i> ปิดรับ
                                     </button>
-                                <?php endif; ?>
+                                <?php
+        endif; ?>
                             </td>
                         </tr>
-                        <?php endforeach; ?>
-                    <?php else: ?>
+                        <?php
+    endforeach; ?>
+                    <?php
+else: ?>
                         <tr>
                             <td colspan="6" class="p-16 text-center">
                                 <div class="flex flex-col items-center justify-center text-slate-300">
@@ -161,7 +170,8 @@ $open_subjects = $stmt->fetchAll();
                                 </div>
                             </td>
                         </tr>
-                    <?php endif; ?>
+                    <?php
+endif; ?>
                 </tbody>
             </table>
         </div>
